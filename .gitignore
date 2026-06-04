@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+storage/uploads/*
+storage/outputs/*
+storage/tmp/*
+!storage/uploads/.gitkeep
+!storage/outputs/.gitkeep
+!storage/tmp/.gitkeep
+.DS_Store
+*.log
