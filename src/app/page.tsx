@@ -37,9 +37,10 @@ function formatDuration(seconds: number) {
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
-  const [silenceThreshold, setSilenceThreshold] = useState("-35");
-  const [minimumSilenceDuration, setMinimumSilenceDuration] = useState("1.2");
-  const [padding, setPadding] = useState("0.3");
+  const [silenceThreshold, setSilenceThreshold] = useState("-40");
+  const [minimumSilenceDuration, setMinimumSilenceDuration] = useState("5");
+  const [padding, setPadding] = useState("2");
+  const [mergeNearbyGap, setMergeNearbyGap] = useState("8");
   const [status, setStatus] = useState("Choose a recording to get started.");
   const [error, setError] = useState("");
   const [result, setResult] = useState<ProcessResult | null>(null);
@@ -64,6 +65,7 @@ export default function Home() {
     formData.append("silenceThreshold", silenceThreshold);
     formData.append("minimumSilenceDuration", minimumSilenceDuration);
     formData.append("padding", padding);
+    formData.append("mergeNearbyGap", mergeNearbyGap);
 
     setIsProcessing(true);
     setStatus("Uploading your recording...");
@@ -151,7 +153,26 @@ export default function Home() {
               <span>sec</span>
             </div>
           </label>
+
+          <label>
+            <span>Merge nearby speech gaps</span>
+            <div className="input-row">
+              <input
+                type="number"
+                value={mergeNearbyGap}
+                onChange={(event) => setMergeNearbyGap(event.target.value)}
+                min="0"
+                step="0.5"
+              />
+              <span>sec</span>
+            </div>
+          </label>
         </div>
+
+        <p className="settings-help">
+          Higher minimum silence and merge gap values preserve full conversations by removing only meaningful
+          dead air like dialing, ringing, and long pauses.
+        </p>
 
         <button className="primary-action" type="submit" disabled={isProcessing}>
           {isProcessing ? "Processing..." : "Upload and Condense"}

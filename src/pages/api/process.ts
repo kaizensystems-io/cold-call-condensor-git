@@ -113,18 +113,20 @@ export default async function handler(
 
     uploadedPath = file.filepath;
 
-    const silenceThreshold = readNumber(fields.silenceThreshold, -35);
-    const minimumSilenceDuration = readNumber(fields.minimumSilenceDuration, 1.2);
-    const padding = readNumber(fields.padding, 0.3);
+    const silenceThreshold = readNumber(fields.silenceThreshold, -40);
+    const minimumSilenceDuration = readNumber(fields.minimumSilenceDuration, 5);
+    const padding = readNumber(fields.padding, 2);
+    const mergeNearbyGap = readNumber(fields.mergeNearbyGap, 8);
 
-    if (minimumSilenceDuration <= 0 || padding < 0) {
-      throw new Error("Silence duration must be greater than zero, and padding cannot be negative.");
+    if (minimumSilenceDuration <= 0 || padding < 0 || mergeNearbyGap < 0) {
+      throw new Error("Silence duration must be greater than zero. Padding and merge gap cannot be negative.");
     }
 
     const { outputPath: _outputPath, ...result } = await condenseVideo(uploadedPath, {
       silenceThresholdDb: silenceThreshold,
       minimumSilenceDuration,
-      padding
+      padding,
+      mergeNearbyGap
     });
 
     res.status(200).json(result);

@@ -20,6 +20,7 @@ export type CondenseOptions = {
   silenceThresholdDb: number;
   minimumSilenceDuration: number;
   padding: number;
+  mergeNearbyGap: number;
 };
 
 export type CondenseResult = {
@@ -33,8 +34,7 @@ export type CondenseResult = {
   warning?: string;
 };
 
-const tinySegmentSeconds = 0.25;
-const adjacencyToleranceSeconds = 0.05;
+const minimumIsolatedSpeechSeconds = 2;
 
 function runCommand(command: string, args: string[]) {
   return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
@@ -143,50 +143,69 @@ export function parseSilenceRanges(output: string, originalDuration?: number) {
 export function buildTalkingSegments(
   silences: SilenceRange[],
   originalDuration: number,
-  padding: number
+  padding: number,
+  mergeNearbyGap: number
 ): Segment[] {
   const sortedSilences = silences
     .filter((silence) => silence.end > silence.start)
     .sort((a, b) => a.start - b.start);
 
-  const rawSegments: Array<Omit<Segment, "index" | "duration">> = [];
+  type InternalSegment = {
+    start: number;
+    end: number;
+    coreStart: number;
+    coreEnd: number;
+    speechDuration: number;
+  };
+
+  const rawSegments: InternalSegment[] = [];
   let cursor = 0;
 
   for (const silence of sortedSilences) {
     const speechStart = cursor;
     const speechEnd = Math.max(0, Math.min(originalDuration, silence.start));
+    const speechDuration = speechEnd - speechStart;
 
-    if (speechEnd - speechStart >= tinySegmentSeconds) {
+    if (speechDuration > 0) {
       rawSegments.push({
         start: Math.max(0, speechStart - padding),
-        end: Math.min(originalDuration, speechEnd + padding)
+        end: Math.min(originalDuration, speechEnd + padding),
+        coreStart: speechStart,
+        coreEnd: speechEnd,
+        speechDuration
       });
     }
 
     cursor = Math.max(cursor, Math.min(originalDuration, silence.end));
   }
 
-  if (originalDuration - cursor >= tinySegmentSeconds) {
+  const finalSpeechDuration = originalDuration - cursor;
+  if (finalSpeechDuration > 0) {
     rawSegments.push({
       start: Math.max(0, cursor - padding),
-      end: originalDuration
+      end: originalDuration,
+      coreStart: cursor,
+      coreEnd: originalDuration,
+      speechDuration: finalSpeechDuration
     });
   }
 
-  const merged = rawSegments.reduce<Array<Omit<Segment, "index" | "duration">>>((acc, segment) => {
+  const merged = rawSegments.reduce<InternalSegment[]>((acc, segment) => {
     const previous = acc.at(-1);
 
-    if (!previous || segment.start > previous.end + adjacencyToleranceSeconds) {
+    if (!previous || segment.coreStart - previous.coreEnd >= mergeNearbyGap) {
       acc.push(segment);
       return acc;
     }
 
     previous.end = Math.max(previous.end, segment.end);
+    previous.coreEnd = Math.max(previous.coreEnd, segment.coreEnd);
+    previous.speechDuration += segment.speechDuration;
     return acc;
   }, []);
 
   return merged
-    .filter((segment) => segment.end - segment.start >= tinySegmentSeconds)
+    .filter((segment) => segment.speechDuration >= minimumIsolatedSpeechSeconds)
     .map((segment, index) => ({
       index: index + 1,
       start: Number(segment.start.toFixed(3)),
@@ -273,7 +292,7 @@ export async function condenseVideo(inputPath: string, options: CondenseOptions)
             duration: Number(originalDuration.toFixed(3))
           }
         ]
-      : buildTalkingSegments(silences, originalDuration, options.padding);
+      : buildTalkingSegments(silences, originalDuration, options.padding, options.mergeNearbyGap);
 
   if (segments.length === 0) {
     throw new Error("No talking segments were found. Try lowering the silence threshold or reducing the minimum silence duration.");

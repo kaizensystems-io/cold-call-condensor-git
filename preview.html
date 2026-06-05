@@ -108,8 +108,16 @@
 
       .settings-grid {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 16px;
+      }
+
+      .settings-help {
+        max-width: 760px;
+        margin: -6px 0 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.45;
       }
 
       .input-row {
@@ -279,7 +287,7 @@
           <label>
             <span>Silence threshold</span>
             <div class="input-row">
-              <input type="number" value="-35" step="1" />
+              <input type="number" value="-40" step="1" />
               <span>dB</span>
             </div>
           </label>
@@ -287,7 +295,7 @@
           <label>
             <span>Minimum silence</span>
             <div class="input-row">
-              <input type="number" value="1.2" min="0.1" step="0.1" />
+              <input type="number" value="5" min="0.1" step="0.1" />
               <span>sec</span>
             </div>
           </label>
@@ -295,11 +303,24 @@
           <label>
             <span>Speech padding</span>
             <div class="input-row">
-              <input type="number" value="0.3" min="0" step="0.1" />
+              <input type="number" value="2" min="0" step="0.1" />
+              <span>sec</span>
+            </div>
+          </label>
+
+          <label>
+            <span>Merge nearby speech gaps</span>
+            <div class="input-row">
+              <input type="number" value="8" min="0" step="0.5" />
               <span>sec</span>
             </div>
           </label>
         </div>
+
+        <p class="settings-help">
+          Higher minimum silence and merge gap values preserve full conversations by removing only meaningful
+          dead air like dialing, ringing, and long pauses.
+        </p>
 
         <button class="primary-action" type="submit" id="submit-button">Upload and Condense</button>
       </form>
@@ -318,15 +339,15 @@
           </div>
           <div>
             <span>Condensed duration</span>
-            <strong>24:16</strong>
+            <strong>49:50</strong>
           </div>
           <div>
             <span>Time removed</span>
-            <strong>1:24:06</strong>
+            <strong>58:32</strong>
           </div>
           <div>
             <span>Talking segments</span>
-            <strong>8</strong>
+            <strong>4</strong>
           </div>
         </div>
 
@@ -345,14 +366,10 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>1</td><td>0:42</td><td>3:18</td><td>2:36</td></tr>
-                <tr><td>2</td><td>8:11</td><td>12:04</td><td>3:53</td></tr>
-                <tr><td>3</td><td>18:35</td><td>20:10</td><td>1:35</td></tr>
-                <tr><td>4</td><td>31:22</td><td>37:50</td><td>6:28</td></tr>
-                <tr><td>5</td><td>44:09</td><td>48:13</td><td>4:04</td></tr>
-                <tr><td>6</td><td>1:02:41</td><td>1:05:20</td><td>2:39</td></tr>
-                <tr><td>7</td><td>1:24:08</td><td>1:26:37</td><td>2:29</td></tr>
-                <tr><td>8</td><td>1:42:14</td><td>1:43:06</td><td>0:52</td></tr>
+                <tr><td>1</td><td>0:42</td><td>12:04</td><td>11:22</td></tr>
+                <tr><td>2</td><td>31:22</td><td>48:13</td><td>16:51</td></tr>
+                <tr><td>3</td><td>1:02:41</td><td>1:05:20</td><td>2:39</td></tr>
+                <tr><td>4</td><td>1:24:08</td><td>1:43:06</td><td>18:58</td></tr>
               </tbody>
             </table>
           </div>

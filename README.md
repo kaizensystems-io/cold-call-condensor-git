@@ -50,11 +50,16 @@ http://localhost:3000
 
 1. Choose an OBS recording in `.mp4`, `.mov`, or `.mkv` format.
 2. Keep the default settings for a first test:
-   - Silence threshold: `-35dB`
-   - Minimum silence duration: `1.2 seconds`
-   - Padding before/after speech: `0.3 seconds`
+   - Silence threshold: `-40dB`
+   - Minimum silence duration: `5 seconds`
+   - Padding before/after speech: `2 seconds`
+   - Merge nearby speech gaps: `8 seconds`
 3. Click **Upload and Condense**.
 4. Download the processed MP4 when the result appears.
+
+For cold-call recordings, higher minimum silence and merge gap values preserve full conversation blocks instead
+of splitting normal back-and-forth into sentence-level clips. The defaults are tuned to remove meaningful dead
+air like dialing, ringing, and long pauses.
 
 ## How To Test
 
@@ -105,5 +110,7 @@ These folders are created automatically. Uploaded source files are removed after
 
 - There is no login, database, payment system, transcription, or cloud deployment.
 - Large files can take a while because each talking segment is re-encoded for reliable MP4 concatenation.
-- If processing removes too much speech, lower the silence threshold, for example from `-35dB` to `-45dB`.
-- If processing keeps too much dead air, raise the silence threshold, for example from `-35dB` to `-30dB`.
+- If processing removes too much speech, lower the silence threshold, for example from `-40dB` to `-45dB`.
+- If processing keeps too much dead air, raise the silence threshold, for example from `-40dB` to `-35dB`.
+- If normal conversations are split into too many clips, increase minimum silence or merge nearby speech gaps.
+- If unrelated calls are being joined together, lower merge nearby speech gaps.
