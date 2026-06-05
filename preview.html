@@ -23,26 +23,13 @@
         <p class="eyebrow">Local-first video condenser</p>
         <h1>Cold Call Condenser</h1>
         <p class="description">
-          Turn long call recordings into clean conversation-only videos for cold callers and appointment setters.
+          Turn long call recordings into clean clip-only videos for cold callers and appointment setters.
           Keep the calls, lose the dialing, ringing, and dead air.
         </p>
       </section>
 
       <section class="workspace">
         <div class="upload-panel">
-          <div class="preset-row">
-            <label>
-              <span>Preset</span>
-              <select>
-                <option>Cold Calling</option>
-                <option>Appointment Setting</option>
-                <option>Aggressive Condensing</option>
-                <option>Maximum Conversation Preservation</option>
-              </select>
-            </label>
-            <p>Balanced cleanup for cold call sessions with dialing, ringing, and natural talk gaps.</p>
-          </div>
-
           <label class="dropzone" id="dropzone">
             <input type="file" accept=".mp4,.mov,.mkv" id="video-file" />
             <span class="dropzone-title" id="file-title">Drop your call recording here</span>
@@ -92,7 +79,7 @@
             </div>
 
             <p class="settings-help">
-              Higher minimum silence and merge gap values preserve full conversations by removing only meaningful
+              Higher minimum silence and merge gap values preserve larger clips by removing only meaningful
               dead air like dialing, ringing, and long pauses.
             </p>
           </details>
@@ -107,8 +94,8 @@
               <span class="spinner" id="spinner" hidden></span>
               <strong id="status">Drop in a call recording to get started.</strong>
             </div>
-            <p id="step">Conversation mode is tuned for full call blocks.</p>
-            <p class="conversation-progress" id="conversation-progress" hidden></p>
+            <p id="step">Clip mode is tuned for cold calling sessions.</p>
+            <p class="rendering-hint" id="rendering-hint" hidden></p>
           </div>
 
           <div class="meter-group">
@@ -131,14 +118,14 @@
 
       <section class="empty-state" id="empty-state">
         <strong>No condensed video yet</strong>
-        <p>Your success summary and conversation previews will appear here after processing.</p>
+        <p>Your success summary and clip previews will appear here after processing.</p>
       </section>
 
       <section class="results" id="results" hidden>
         <div class="success-header">
           <div>
             <span class="panel-label">Success</span>
-            <h2>Conversation-only video ready</h2>
+            <h2>Clip-only video ready</h2>
           </div>
           <a class="download-button" href="#" onclick="return false;">Download full condensed video</a>
         </div>
@@ -147,23 +134,22 @@
           <div><span>Original Duration</span><strong>3h 12m</strong></div>
           <div><span>Condensed Duration</span><strong>47m 0s</strong></div>
           <div><span>Time Removed</span><strong>2h 25m</strong></div>
-          <div><span>Conversations Found</span><strong>31</strong></div>
+          <div><span>Clips Found</span><strong>31</strong></div>
           <div><span>Reduction</span><strong>76%</strong></div>
         </div>
 
-        <div class="conversation-section">
+        <div class="clip-section">
           <div class="section-heading">
-            <h2>Conversation Preview</h2>
-            <p>Preview each block, then download the full video or a single conversation clip.</p>
+            <h2>Clip Preview</h2>
+            <p>Preview each clip, then download the full video or a single clip.</p>
           </div>
 
-          <div class="conversation-grid">
-            <article class="conversation-card">
+          <div class="clip-grid">
+            <article class="clip-card">
               <div class="preview-video">Preview Player</div>
-              <div class="conversation-card-body">
+              <div class="clip-card-body">
                 <div>
-                  <h3>Conversation #1</h3>
-                  <span class="category-pill">Short Conversation</span>
+                  <h3>Clip #1</h3>
                   <p>Duration: 2m 14s<br />Started at: 03:11</p>
                 </div>
                 <div class="card-actions">
@@ -173,12 +159,11 @@
               </div>
             </article>
 
-            <article class="conversation-card">
+            <article class="clip-card">
               <div class="preview-video">Preview Player</div>
-              <div class="conversation-card-body">
+              <div class="clip-card-body">
                 <div>
-                  <h3>Conversation #2</h3>
-                  <span class="category-pill">Medium Conversation</span>
+                  <h3>Clip #2</h3>
                   <p>Duration: 4m 02s<br />Started at: 08:54</p>
                 </div>
                 <div class="card-actions">
@@ -188,12 +173,11 @@
               </div>
             </article>
 
-            <article class="conversation-card">
+            <article class="clip-card">
               <div class="preview-video">Preview Player</div>
-              <div class="conversation-card-body">
+              <div class="clip-card-body">
                 <div>
-                  <h3>Conversation #3</h3>
-                  <span class="category-pill">Medium Conversation</span>
+                  <h3>Clip #3</h3>
                   <p>Duration: 6m 28s<br />Started at: 31:22</p>
                 </div>
                 <div class="card-actions">
@@ -232,7 +216,7 @@
       const processingMeter = document.querySelector("#processing-meter");
       const processingLabel = document.querySelector("#processing-label");
       const spinner = document.querySelector("#spinner");
-      const conversationProgress = document.querySelector("#conversation-progress");
+      const renderingHint = document.querySelector("#rendering-hint");
 
       fileInput.addEventListener("change", () => {
         fileTitle.textContent = fileInput.files[0] ? fileInput.files[0].name : "Drop your call recording here";
@@ -251,7 +235,7 @@
         button.disabled = true;
         button.textContent = "Condensing...";
         spinner.hidden = false;
-        conversationProgress.hidden = true;
+        renderingHint.hidden = true;
         results.hidden = true;
         emptyState.hidden = false;
 
@@ -266,23 +250,27 @@
         const steps = [
           ["Analyzing audio...", 18],
           ["Detecting speech...", 40],
-          ["Merging conversation blocks...", 58],
-          ["Building conversation clips...", 76],
+          ["Merging audio clips...", 58],
           ["Rendering final video...", 88],
           ["Complete.", 100]
         ];
 
         for (const [label, value] of steps) {
-          statusText.textContent = value === 100 ? "Complete. Your conversation-only video is ready." : "Processing your recording...";
+          statusText.textContent = value === 100 ? "Complete. Your clip-only video is ready." : "Processing your recording...";
           stepText.textContent = label;
-          if (label === "Building conversation clips...") {
-            for (let i = 3; i <= 5; i += 1) {
-              conversationProgress.hidden = false;
-              conversationProgress.textContent = `Conversation ${i} of 11`;
+          if (label === "Rendering final video...") {
+            const renderMessages = [
+              "Still working — large files can take a few minutes.",
+              "Do not close this tab.",
+              "Rendering final video..."
+            ];
+            for (const message of renderMessages) {
+              renderingHint.hidden = false;
+              renderingHint.textContent = message;
               await new Promise((resolve) => setTimeout(resolve, 420));
             }
           } else {
-            conversationProgress.hidden = true;
+            renderingHint.hidden = true;
           }
           processingMeter.style.width = `${value}%`;
           processingLabel.textContent = `${value}%`;
@@ -290,7 +278,7 @@
         }
 
         spinner.hidden = true;
-        conversationProgress.hidden = true;
+        renderingHint.hidden = true;
         emptyState.hidden = true;
         results.hidden = false;
         button.disabled = false;

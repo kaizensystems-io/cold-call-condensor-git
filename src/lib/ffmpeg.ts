@@ -11,7 +11,7 @@ export type Segment = {
   duration: number;
 };
 
-export type Conversation = Segment & {
+export type Clip = Segment & {
   filename: string;
 };
 
@@ -32,11 +32,10 @@ export type CondenseResult = {
   condensedDuration: number;
   removedDuration: number;
   reductionPercentage: number;
-  segmentCount: number;
-  conversationCount: number;
+  clipCount: number;
   outputFilename: string;
   outputPath: string;
-  conversations: Conversation[];
+  clips: Clip[];
   warning?: string;
 };
 
@@ -301,7 +300,7 @@ export async function condenseVideo(inputPath: string, options: CondenseOptions)
       : buildTalkingSegments(silences, originalDuration, options.padding, options.mergeNearbyGap);
 
   if (segments.length === 0) {
-    throw new Error("No conversation blocks were found. Try lowering the silence threshold or reducing the minimum silence duration.");
+    throw new Error("No audio clips were found. Try lowering the silence threshold or reducing the minimum silence duration.");
   }
 
   const jobId = randomUUID();
@@ -313,16 +312,16 @@ export async function condenseVideo(inputPath: string, options: CondenseOptions)
 
   try {
     const segmentPaths: string[] = [];
-    const conversations: Conversation[] = [];
+    const clips: Clip[] = [];
 
     for (const segment of segments) {
-      const conversationFilename = `${jobId}-conversation-${String(segment.index).padStart(3, "0")}.mp4`;
-      const segmentPath = path.join(outputsDir, conversationFilename);
+      const clipFilename = `${jobId}-clip-${String(segment.index).padStart(3, "0")}.mp4`;
+      const segmentPath = path.join(outputsDir, clipFilename);
       await cutSegment(inputPath, segmentPath, segment);
       segmentPaths.push(segmentPath);
-      conversations.push({
+      clips.push({
         ...segment,
-        filename: conversationFilename
+        filename: clipFilename
       });
     }
 
@@ -336,11 +335,10 @@ export async function condenseVideo(inputPath: string, options: CondenseOptions)
       condensedDuration: Number(condensedDuration.toFixed(3)),
       removedDuration: Number(Math.max(0, originalDuration - condensedDuration).toFixed(3)),
       reductionPercentage: Number((((originalDuration - condensedDuration) / originalDuration) * 100).toFixed(1)),
-      segmentCount: segments.length,
-      conversationCount: conversations.length,
+      clipCount: clips.length,
       outputFilename,
       outputPath,
-      conversations,
+      clips,
       warning
     };
   } finally {

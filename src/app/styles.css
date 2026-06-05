@@ -114,42 +114,6 @@ h3 {
   padding: 24px;
 }
 
-.preset-row {
-  display: grid;
-  grid-template-columns: minmax(240px, 0.45fr) minmax(0, 1fr);
-  gap: 14px;
-  align-items: end;
-}
-
-.preset-row label {
-  display: grid;
-  gap: 8px;
-  color: var(--ink);
-  font-weight: 800;
-}
-
-.preset-row label > span {
-  color: var(--muted);
-  font-size: 0.86rem;
-}
-
-.preset-row select {
-  width: 100%;
-  min-height: 46px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0 12px;
-  background: #ffffff;
-  color: var(--ink);
-  font-weight: 800;
-}
-
-.preset-row p {
-  margin-bottom: 2px;
-  color: var(--muted);
-  line-height: 1.45;
-}
-
 .progress-panel {
   display: grid;
   align-content: start;
@@ -165,7 +129,7 @@ h3 {
 .progress-panel p,
 .settings-help,
 .section-heading p,
-.conversation-card p,
+.clip-card p,
 .feedback-panel p,
 .empty-state p {
   color: var(--muted);
@@ -400,10 +364,10 @@ h3 {
   animation: spin 850ms linear infinite;
 }
 
-.conversation-progress {
+.rendering-hint {
   display: inline-flex;
   width: fit-content;
-  min-height: 32px;
+  min-height: 34px;
   align-items: center;
   border-radius: 999px;
   padding: 0 10px;
@@ -456,7 +420,7 @@ h3 {
 .success-header,
 .section-heading,
 .feedback-panel,
-.conversation-card-body {
+.clip-card-body {
   display: flex;
   gap: 16px;
   align-items: center;
@@ -486,51 +450,38 @@ h3 {
   font-size: 1.42rem;
 }
 
-.conversation-section {
+.clip-section {
   margin-top: 28px;
 }
 
-.conversation-grid {
+.clip-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-top: 14px;
 }
 
-.conversation-card {
+.clip-card {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
 }
 
-.conversation-card video {
+.clip-card video {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
   background: #101817;
 }
 
-.conversation-card-body {
+.clip-card-body {
   padding: 16px;
   align-items: flex-start;
 }
 
-.conversation-card p {
+.clip-card p {
   margin-bottom: 0;
-}
-
-.category-pill {
-  display: inline-flex;
-  min-height: 26px;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0 9px;
-  margin-bottom: 10px;
-  background: #edf5f3;
-  color: var(--accent-dark);
-  font-size: 0.78rem;
-  font-weight: 850;
 }
 
 .card-actions {
@@ -554,8 +505,7 @@ h3 {
 
 @media (max-width: 980px) {
   .workspace,
-  .conversation-grid,
-  .preset-row {
+  .clip-grid {
     grid-template-columns: 1fr;
   }
 
@@ -585,7 +535,7 @@ h3 {
   .success-header,
   .section-heading,
   .feedback-panel,
-  .conversation-card-body {
+  .clip-card-body {
     align-items: stretch;
     flex-direction: column;
   }

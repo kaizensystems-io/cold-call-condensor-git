@@ -1,9 +1,8 @@
 "use client";
 
 import { DragEvent, useMemo, useState } from "react";
-import { defaultPresetId, getProcessingPreset, processingPresets, type PresetId } from "@/lib/presets";
 
-type Conversation = {
+type Clip = {
   index: number;
   start: number;
   end: number;
@@ -16,9 +15,9 @@ type ProcessResult = {
   condensedDuration: number;
   removedDuration: number;
   reductionPercentage: number;
-  conversationCount: number;
+  clipCount: number;
   outputFilename: string;
-  conversations: Conversation[];
+  clips: Clip[];
   warning?: string;
 };
 
@@ -26,10 +25,7 @@ const allowedTypes = ".mp4,.mov,.mkv";
 const processingSteps = [
   "Analyzing audio...",
   "Detecting speech...",
-  "Merging conversation blocks...",
-  "Building conversation clips...",
-  "Building conversation clips...",
-  "Building conversation clips...",
+  "Merging audio clips...",
   "Rendering final video..."
 ];
 
@@ -69,24 +65,15 @@ function isValidVideo(file: File) {
   return /\.(mp4|mov|mkv)$/i.test(file.name);
 }
 
-function getConversationCategory(duration: number) {
-  if (duration < 45) return "Quick Hangup";
-  if (duration < 180) return "Short Conversation";
-  if (duration < 480) return "Medium Conversation";
-  return "Long Conversation";
-}
-
 export default function Home() {
-  const defaultPreset = getProcessingPreset(defaultPresetId);
   const [file, setFile] = useState<File | null>(null);
-  const [presetId, setPresetId] = useState<PresetId>(defaultPresetId);
-  const [silenceThreshold, setSilenceThreshold] = useState(String(defaultPreset.silenceThresholdDb));
-  const [minimumSilenceDuration, setMinimumSilenceDuration] = useState(String(defaultPreset.minimumSilenceDuration));
-  const [padding, setPadding] = useState(String(defaultPreset.padding));
-  const [mergeNearbyGap, setMergeNearbyGap] = useState(String(defaultPreset.mergeNearbyGap));
+  const [silenceThreshold, setSilenceThreshold] = useState("-40");
+  const [minimumSilenceDuration, setMinimumSilenceDuration] = useState("5");
+  const [padding, setPadding] = useState("2");
+  const [mergeNearbyGap, setMergeNearbyGap] = useState("8");
   const [status, setStatus] = useState("Drop in a call recording to get started.");
   const [processingStep, setProcessingStep] = useState("");
-  const [conversationBuildStatus, setConversationBuildStatus] = useState("");
+  const [renderingHint, setRenderingHint] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [error, setError] = useState("");
@@ -98,17 +85,6 @@ export default function Home() {
   const downloadUrl = useMemo(() => {
     return result ? `/api/download/${encodeURIComponent(result.outputFilename)}` : "";
   }, [result]);
-
-  const selectedPreset = useMemo(() => getProcessingPreset(presetId), [presetId]);
-
-  function applyPreset(nextPresetId: PresetId) {
-    const preset = getProcessingPreset(nextPresetId);
-    setPresetId(nextPresetId);
-    setSilenceThreshold(String(preset.silenceThresholdDb));
-    setMinimumSilenceDuration(String(preset.minimumSilenceDuration));
-    setPadding(String(preset.padding));
-    setMergeNearbyGap(String(preset.mergeNearbyGap));
-  }
 
   function chooseFile(nextFile: File | null) {
     setError("");
@@ -144,7 +120,7 @@ export default function Home() {
       value,
       createdAt: new Date().toISOString(),
       outputFilename: result?.outputFilename ?? null,
-      conversationCount: result?.conversationCount ?? null,
+      clipCount: result?.clipCount ?? null,
       reductionPercentage: result?.reductionPercentage ?? null
     };
     const existing = JSON.parse(localStorage.getItem("cold-call-condenser-feedback") ?? "[]");
@@ -163,7 +139,6 @@ export default function Home() {
 
     const formData = new FormData();
     formData.append("video", file);
-    formData.append("preset", presetId);
     formData.append("silenceThreshold", silenceThreshold);
     formData.append("minimumSilenceDuration", minimumSilenceDuration);
     formData.append("padding", padding);
@@ -173,13 +148,17 @@ export default function Home() {
     setUploadProgress(0);
     setProcessingProgress(0);
     setProcessingStep("Preparing upload...");
-    setConversationBuildStatus("");
+    setRenderingHint("");
     setStatus("Uploading your recording...");
 
     let stepIndex = 0;
-    let estimatedConversationIndex = 2;
-    const estimatedConversationTotal = 11;
+    let renderHintIndex = 0;
     let stepTimer: ReturnType<typeof window.setInterval> | undefined;
+    const renderHints = [
+      "Still working — large files can take a few minutes.",
+      "Do not close this tab.",
+      "Rendering final video..."
+    ];
 
     const xhr = new XMLHttpRequest();
 
@@ -195,16 +174,15 @@ export default function Home() {
         stepTimer = window.setInterval(() => {
           stepIndex = Math.min(stepIndex + 1, processingSteps.length - 1);
           setProcessingStep(processingSteps[stepIndex]);
-          setProcessingProgress(Math.min(94, 18 + stepIndex * 13 + estimatedConversationIndex * 2));
+          setProcessingProgress((currentProgress) => Math.min(94, Math.max(currentProgress + 6, 18 + stepIndex * 18)));
 
-          if (processingSteps[stepIndex] === "Building conversation clips...") {
-            estimatedConversationIndex =
-              estimatedConversationIndex >= estimatedConversationTotal ? 1 : estimatedConversationIndex + 1;
-            setConversationBuildStatus(`Conversation ${estimatedConversationIndex} of ${estimatedConversationTotal}`);
+          if (processingSteps[stepIndex] === "Rendering final video...") {
+            setRenderingHint(renderHints[renderHintIndex % renderHints.length]);
+            renderHintIndex += 1;
           } else {
-            setConversationBuildStatus("");
+            setRenderingHint("");
           }
-        }, 1800);
+        }, 2200);
       }
     };
 
@@ -220,13 +198,13 @@ export default function Home() {
 
         setResult(data);
         setProcessingStep("Complete.");
-        setConversationBuildStatus("");
+        setRenderingHint("");
         setProcessingProgress(100);
-        setStatus("Complete. Your conversation-only video is ready.");
+        setStatus("Complete. Your clip-only video is ready.");
       } catch (caughtError) {
         setError(caughtError instanceof Error ? caughtError.message : "Something went wrong.");
         setProcessingStep("");
-        setConversationBuildStatus("");
+        setRenderingHint("");
         setStatus("Processing stopped.");
       } finally {
         setIsProcessing(false);
@@ -237,7 +215,7 @@ export default function Home() {
       if (stepTimer) window.clearInterval(stepTimer);
       setError("Upload failed. Please try again.");
       setProcessingStep("");
-      setConversationBuildStatus("");
+      setRenderingHint("");
       setStatus("Processing stopped.");
       setIsProcessing(false);
     };
@@ -252,27 +230,13 @@ export default function Home() {
         <p className="eyebrow">Local-first video condenser</p>
         <h1>Cold Call Condenser</h1>
         <p className="description">
-          Turn long call recordings into clean conversation-only videos for cold callers and appointment setters.
+          Turn long call recordings into clean clip-only videos for cold callers and appointment setters.
           Keep the calls, lose the dialing, ringing, and dead air.
         </p>
       </section>
 
       <section className="workspace">
         <div className="upload-panel">
-          <div className="preset-row">
-            <label>
-              <span>Preset</span>
-              <select value={presetId} onChange={(event) => applyPreset(event.target.value as PresetId)}>
-                {processingPresets.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p>{selectedPreset.description}</p>
-          </div>
-
           <label
             className={`dropzone ${isDragging ? "is-dragging" : ""}`}
             onDragOver={(event) => {
@@ -357,7 +321,7 @@ export default function Home() {
             </div>
 
             <p className="settings-help">
-              Higher minimum silence and merge gap values preserve full conversations by removing only meaningful
+              Higher minimum silence and merge gap values preserve larger clips by removing only meaningful
               dead air like dialing, ringing, and long pauses.
             </p>
           </details>
@@ -374,8 +338,8 @@ export default function Home() {
               {isProcessing ? <span className="spinner" aria-hidden="true" /> : null}
               <strong>{status}</strong>
             </div>
-            {processingStep ? <p>{processingStep}</p> : <p>Conversation mode is tuned for full call blocks.</p>}
-            {conversationBuildStatus ? <p className="conversation-progress">{conversationBuildStatus}</p> : null}
+            {processingStep ? <p>{processingStep}</p> : <p>Clip mode is tuned for cold calling sessions.</p>}
+            {renderingHint ? <p className="rendering-hint">{renderingHint}</p> : null}
           </div>
 
           <div className="meter-group">
@@ -406,14 +370,14 @@ export default function Home() {
       {!result ? (
         <section className="empty-state">
           <strong>No condensed video yet</strong>
-          <p>Your success summary and conversation previews will appear here after processing.</p>
+          <p>Your success summary and clip previews will appear here after processing.</p>
         </section>
       ) : (
         <section className="results">
           <div className="success-header">
             <div>
               <span className="panel-label">Success</span>
-              <h2>Conversation-only video ready</h2>
+              <h2>Clip-only video ready</h2>
             </div>
             <a className="download-button" href={downloadUrl}>
               Download full condensed video
@@ -434,8 +398,8 @@ export default function Home() {
               <strong>{formatDuration(result.removedDuration)}</strong>
             </div>
             <div>
-              <span>Conversations Found</span>
-              <strong>{result.conversationCount}</strong>
+              <span>Clips Found</span>
+              <strong>{result.clipCount}</strong>
             </div>
             <div>
               <span>Reduction</span>
@@ -443,38 +407,37 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="conversation-section">
+          <div className="clip-section">
             <div className="section-heading">
-              <h2>Conversation Preview</h2>
-              <p>Preview each block, then download the full video or a single conversation clip.</p>
+              <h2>Clip Preview</h2>
+              <p>Preview each clip, then download the full video or a single clip.</p>
             </div>
 
-            <div className="conversation-grid">
-              {result.conversations.map((conversation) => (
-                <article className="conversation-card" key={conversation.filename}>
+            <div className="clip-grid">
+              {result.clips.map((clip) => (
+                <article className="clip-card" key={clip.filename}>
                   <video
                     controls
                     preload="metadata"
-                    src={`/api/download/${encodeURIComponent(conversation.filename)}?preview=1`}
+                    src={`/api/download/${encodeURIComponent(clip.filename)}?preview=1`}
                   />
-                  <div className="conversation-card-body">
+                  <div className="clip-card-body">
                     <div>
-                      <h3>Conversation #{conversation.index}</h3>
-                      <span className="category-pill">{getConversationCategory(conversation.duration)}</span>
+                      <h3>Clip #{clip.index}</h3>
                       <p>
-                        Duration: {formatDuration(conversation.duration)}
+                        Duration: {formatDuration(clip.duration)}
                         <br />
-                        Started at: {formatTimestamp(conversation.start)}
+                        Started at: {formatTimestamp(clip.start)}
                       </p>
                     </div>
                     <div className="card-actions">
                       <a
                         className="secondary-action"
-                        href={`/api/download/${encodeURIComponent(conversation.filename)}?preview=1`}
+                        href={`/api/download/${encodeURIComponent(clip.filename)}?preview=1`}
                       >
                         Preview
                       </a>
-                      <a className="secondary-action" href={`/api/download/${encodeURIComponent(conversation.filename)}`}>
+                      <a className="secondary-action" href={`/api/download/${encodeURIComponent(clip.filename)}`}>
                         Download Clip
                       </a>
                     </div>

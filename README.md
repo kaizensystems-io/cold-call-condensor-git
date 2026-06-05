@@ -1,10 +1,10 @@
 # Cold Call Condenser
 
-Cold Call Condenser is a local-first MVP for trimming long call recordings down to the parts that contain real conversations.
+Cold Call Condenser is a local-first MVP for trimming long call recordings down to useful audio clips.
 
-Upload an `.mp4`, `.mov`, or `.mkv` file, choose silence settings, and the app exports a condensed MP4 from the detected conversation blocks.
+Upload an `.mp4`, `.mov`, or `.mkv` file, choose silence settings if needed, and the app exports a condensed MP4 from the detected audio clips.
 
-The current default mode is tuned for cold-call review: it preserves conversation blocks and removes only
+The current default mode is tuned for cold-call review: it preserves larger clips and removes only
 meaningful dead air like dialing, ringing, long pauses, and time between calls.
 
 ## Requirements
@@ -52,16 +52,15 @@ http://localhost:3000
 ## How To Use
 
 1. Choose a call recording in `.mp4`, `.mov`, or `.mkv` format.
-2. Pick a preset. `Cold Calling` is the default.
-3. Keep Advanced Settings closed unless you need manual tuning:
+2. Keep Advanced Settings closed unless you need manual tuning:
    - Silence threshold: `-40dB`
    - Minimum silence duration: `5 seconds`
    - Padding before/after speech: `2 seconds`
    - Merge nearby speech gaps: `8 seconds`
-4. Click **Condense Recording**.
-5. Download the processed MP4 when the result appears.
+3. Click **Condense Recording**.
+4. Download the processed MP4 when the result appears.
 
-For cold-call recordings, higher minimum silence and merge gap values preserve full conversation blocks instead
+For cold-call recordings, higher minimum silence and merge gap values preserve larger clips instead
 of splitting normal back-and-forth into sentence-level clips. The defaults are tuned to remove meaningful dead
 air like dialing, ringing, and long pauses.
 
@@ -70,10 +69,10 @@ After processing, the app shows:
 - Original duration
 - Condensed duration
 - Time removed
-- Conversations found
+- Clips found
 - Percentage reduction
-- Preview cards for each conversation
-- Download links for the full condensed video and each individual conversation clip
+- Preview cards for each clip
+- Download links for the full condensed video and each individual clip
 - A local beta feedback prompt
 
 ## How To Test
@@ -117,7 +116,7 @@ The app uses local folders only:
 
 - `storage/uploads` for temporary uploaded recordings
 - `storage/tmp` for temporary segment files
-- `storage/outputs` for processed MP4 downloads and individual conversation clips
+- `storage/outputs` for processed MP4 downloads and individual clips
 
 These folders are created automatically. Uploaded source files are removed after processing. Processed outputs remain available for download until you delete them.
 
@@ -129,11 +128,10 @@ Beta feedback is stored in browser `localStorage` under `cold-call-condenser-fee
 - Large files can take a while because each talking segment is re-encoded for reliable MP4 concatenation.
 - If processing removes too much speech, lower the silence threshold, for example from `-40dB` to `-45dB`.
 - If processing keeps too much dead air, raise the silence threshold, for example from `-40dB` to `-35dB`.
-- If normal conversations are split into too many clips, increase minimum silence or merge nearby speech gaps.
+- If useful audio is split into too many clips, increase minimum silence or merge nearby speech gaps.
 - If unrelated calls are being joined together, lower merge nearby speech gaps.
 
 ## Future Feature Structure
 
-- Presets live in `src/lib/presets.ts`.
 - Future feature placeholders live in `src/lib/roadmap.ts`.
-- Planned future features include AI voicemail detection, AI conversation detection, AI objection tagging, call search, and transcription.
+- Planned future features include AI voicemail detection, AI clip detection, AI objection tagging, call search, and transcription.
