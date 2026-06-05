@@ -1,6 +1,7 @@
 "use client";
 
 import { DragEvent, useMemo, useState } from "react";
+import { defaultPresetId, getProcessingPreset, processingPresets, type PresetId } from "@/lib/presets";
 
 type Conversation = {
   index: number;
@@ -24,8 +25,11 @@ type ProcessResult = {
 const allowedTypes = ".mp4,.mov,.mkv";
 const processingSteps = [
   "Analyzing audio...",
-  "Detecting silence...",
-  "Building conversation blocks...",
+  "Detecting speech...",
+  "Merging conversation blocks...",
+  "Building conversation clips...",
+  "Building conversation clips...",
+  "Building conversation clips...",
   "Rendering final video..."
 ];
 
@@ -65,14 +69,24 @@ function isValidVideo(file: File) {
   return /\.(mp4|mov|mkv)$/i.test(file.name);
 }
 
+function getConversationCategory(duration: number) {
+  if (duration < 45) return "Quick Hangup";
+  if (duration < 180) return "Short Conversation";
+  if (duration < 480) return "Medium Conversation";
+  return "Long Conversation";
+}
+
 export default function Home() {
+  const defaultPreset = getProcessingPreset(defaultPresetId);
   const [file, setFile] = useState<File | null>(null);
-  const [silenceThreshold, setSilenceThreshold] = useState("-40");
-  const [minimumSilenceDuration, setMinimumSilenceDuration] = useState("5");
-  const [padding, setPadding] = useState("2");
-  const [mergeNearbyGap, setMergeNearbyGap] = useState("8");
-  const [status, setStatus] = useState("Drop in an OBS recording to get started.");
+  const [presetId, setPresetId] = useState<PresetId>(defaultPresetId);
+  const [silenceThreshold, setSilenceThreshold] = useState(String(defaultPreset.silenceThresholdDb));
+  const [minimumSilenceDuration, setMinimumSilenceDuration] = useState(String(defaultPreset.minimumSilenceDuration));
+  const [padding, setPadding] = useState(String(defaultPreset.padding));
+  const [mergeNearbyGap, setMergeNearbyGap] = useState(String(defaultPreset.mergeNearbyGap));
+  const [status, setStatus] = useState("Drop in a call recording to get started.");
   const [processingStep, setProcessingStep] = useState("");
+  const [conversationBuildStatus, setConversationBuildStatus] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [error, setError] = useState("");
@@ -85,6 +99,17 @@ export default function Home() {
     return result ? `/api/download/${encodeURIComponent(result.outputFilename)}` : "";
   }, [result]);
 
+  const selectedPreset = useMemo(() => getProcessingPreset(presetId), [presetId]);
+
+  function applyPreset(nextPresetId: PresetId) {
+    const preset = getProcessingPreset(nextPresetId);
+    setPresetId(nextPresetId);
+    setSilenceThreshold(String(preset.silenceThresholdDb));
+    setMinimumSilenceDuration(String(preset.minimumSilenceDuration));
+    setPadding(String(preset.padding));
+    setMergeNearbyGap(String(preset.mergeNearbyGap));
+  }
+
   function chooseFile(nextFile: File | null) {
     setError("");
     setResult(null);
@@ -92,7 +117,7 @@ export default function Home() {
 
     if (!nextFile) {
       setFile(null);
-      setStatus("Drop in an OBS recording to get started.");
+      setStatus("Drop in a call recording to get started.");
       return;
     }
 
@@ -138,6 +163,7 @@ export default function Home() {
 
     const formData = new FormData();
     formData.append("video", file);
+    formData.append("preset", presetId);
     formData.append("silenceThreshold", silenceThreshold);
     formData.append("minimumSilenceDuration", minimumSilenceDuration);
     formData.append("padding", padding);
@@ -147,9 +173,12 @@ export default function Home() {
     setUploadProgress(0);
     setProcessingProgress(0);
     setProcessingStep("Preparing upload...");
+    setConversationBuildStatus("");
     setStatus("Uploading your recording...");
 
     let stepIndex = 0;
+    let estimatedConversationIndex = 2;
+    const estimatedConversationTotal = 11;
     let stepTimer: ReturnType<typeof window.setInterval> | undefined;
 
     const xhr = new XMLHttpRequest();
@@ -166,7 +195,15 @@ export default function Home() {
         stepTimer = window.setInterval(() => {
           stepIndex = Math.min(stepIndex + 1, processingSteps.length - 1);
           setProcessingStep(processingSteps[stepIndex]);
-          setProcessingProgress(18 + stepIndex * 22);
+          setProcessingProgress(Math.min(94, 18 + stepIndex * 13 + estimatedConversationIndex * 2));
+
+          if (processingSteps[stepIndex] === "Building conversation clips...") {
+            estimatedConversationIndex =
+              estimatedConversationIndex >= estimatedConversationTotal ? 1 : estimatedConversationIndex + 1;
+            setConversationBuildStatus(`Conversation ${estimatedConversationIndex} of ${estimatedConversationTotal}`);
+          } else {
+            setConversationBuildStatus("");
+          }
         }, 1800);
       }
     };
@@ -183,11 +220,13 @@ export default function Home() {
 
         setResult(data);
         setProcessingStep("Complete.");
+        setConversationBuildStatus("");
         setProcessingProgress(100);
         setStatus("Complete. Your conversation-only video is ready.");
       } catch (caughtError) {
         setError(caughtError instanceof Error ? caughtError.message : "Something went wrong.");
         setProcessingStep("");
+        setConversationBuildStatus("");
         setStatus("Processing stopped.");
       } finally {
         setIsProcessing(false);
@@ -198,6 +237,7 @@ export default function Home() {
       if (stepTimer) window.clearInterval(stepTimer);
       setError("Upload failed. Please try again.");
       setProcessingStep("");
+      setConversationBuildStatus("");
       setStatus("Processing stopped.");
       setIsProcessing(false);
     };
@@ -212,13 +252,27 @@ export default function Home() {
         <p className="eyebrow">Local-first video condenser</p>
         <h1>Cold Call Condenser</h1>
         <p className="description">
-          Turn long OBS cold call recordings into clean conversation-only videos. Keep the calls, lose the
-          dialing, ringing, and dead air.
+          Turn long call recordings into clean conversation-only videos for cold callers and appointment setters.
+          Keep the calls, lose the dialing, ringing, and dead air.
         </p>
       </section>
 
       <section className="workspace">
         <div className="upload-panel">
+          <div className="preset-row">
+            <label>
+              <span>Preset</span>
+              <select value={presetId} onChange={(event) => applyPreset(event.target.value as PresetId)}>
+                {processingPresets.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p>{selectedPreset.description}</p>
+          </div>
+
           <label
             className={`dropzone ${isDragging ? "is-dragging" : ""}`}
             onDragOver={(event) => {
@@ -233,71 +287,80 @@ export default function Home() {
               accept={allowedTypes}
               onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
             />
-            <span className="dropzone-title">{file ? file.name : "Drop your OBS recording here"}</span>
+            <span className="dropzone-title">{file ? file.name : "Drop your call recording here"}</span>
             <span className="dropzone-subtitle">or choose an MP4, MOV, or MKV file</span>
           </label>
 
-          <div className="settings-grid">
-            <label>
-              <span>Silence threshold</span>
-              <div className="input-row">
-                <input
-                  type="number"
-                  value={silenceThreshold}
-                  onChange={(event) => setSilenceThreshold(event.target.value)}
-                  step="1"
-                />
-                <span>dB</span>
-              </div>
-            </label>
-
-            <label>
-              <span>Minimum silence</span>
-              <div className="input-row">
-                <input
-                  type="number"
-                  value={minimumSilenceDuration}
-                  onChange={(event) => setMinimumSilenceDuration(event.target.value)}
-                  min="0.1"
-                  step="0.1"
-                />
-                <span>sec</span>
-              </div>
-            </label>
-
-            <label>
-              <span>Speech padding</span>
-              <div className="input-row">
-                <input
-                  type="number"
-                  value={padding}
-                  onChange={(event) => setPadding(event.target.value)}
-                  min="0"
-                  step="0.1"
-                />
-                <span>sec</span>
-              </div>
-            </label>
-
-            <label>
-              <span>Merge nearby speech gaps</span>
-              <div className="input-row">
-                <input
-                  type="number"
-                  value={mergeNearbyGap}
-                  onChange={(event) => setMergeNearbyGap(event.target.value)}
-                  min="0"
-                  step="0.5"
-                />
-                <span>sec</span>
-              </div>
-            </label>
+          <div className="trust-strip" aria-label="Privacy promises">
+            <span>✓ Processed locally</span>
+            <span>✓ No cloud upload</span>
+            <span>✓ Your recordings stay on your device</span>
           </div>
 
-          <p className="settings-help">
-            Higher minimum silence and merge gap values preserve full conversations by removing only meaningful
-            dead air like dialing, ringing, and long pauses.
-          </p>
+          <details className="advanced-settings">
+            <summary>Advanced Settings</summary>
+            <div className="settings-grid">
+              <label>
+                <span>Silence threshold</span>
+                <div className="input-row">
+                  <input
+                    type="number"
+                    value={silenceThreshold}
+                    onChange={(event) => setSilenceThreshold(event.target.value)}
+                    step="1"
+                  />
+                  <span>dB</span>
+                </div>
+              </label>
+
+              <label>
+                <span>Minimum silence</span>
+                <div className="input-row">
+                  <input
+                    type="number"
+                    value={minimumSilenceDuration}
+                    onChange={(event) => setMinimumSilenceDuration(event.target.value)}
+                    min="0.1"
+                    step="0.1"
+                  />
+                  <span>sec</span>
+                </div>
+              </label>
+
+              <label>
+                <span>Speech padding</span>
+                <div className="input-row">
+                  <input
+                    type="number"
+                    value={padding}
+                    onChange={(event) => setPadding(event.target.value)}
+                    min="0"
+                    step="0.1"
+                  />
+                  <span>sec</span>
+                </div>
+              </label>
+
+              <label>
+                <span>Merge nearby speech gaps</span>
+                <div className="input-row">
+                  <input
+                    type="number"
+                    value={mergeNearbyGap}
+                    onChange={(event) => setMergeNearbyGap(event.target.value)}
+                    min="0"
+                    step="0.5"
+                  />
+                  <span>sec</span>
+                </div>
+              </label>
+            </div>
+
+            <p className="settings-help">
+              Higher minimum silence and merge gap values preserve full conversations by removing only meaningful
+              dead air like dialing, ringing, and long pauses.
+            </p>
+          </details>
 
           <button className="primary-action" type="button" disabled={isProcessing} onClick={startProcessing}>
             {isProcessing ? "Condensing..." : "Condense Recording"}
@@ -307,8 +370,12 @@ export default function Home() {
         <aside className="progress-panel" aria-live="polite">
           <div>
             <span className="panel-label">Status</span>
-            <strong>{status}</strong>
+            <div className="status-title">
+              {isProcessing ? <span className="spinner" aria-hidden="true" /> : null}
+              <strong>{status}</strong>
+            </div>
             {processingStep ? <p>{processingStep}</p> : <p>Conversation mode is tuned for full call blocks.</p>}
+            {conversationBuildStatus ? <p className="conversation-progress">{conversationBuildStatus}</p> : null}
           </div>
 
           <div className="meter-group">
@@ -393,15 +460,24 @@ export default function Home() {
                   <div className="conversation-card-body">
                     <div>
                       <h3>Conversation #{conversation.index}</h3>
+                      <span className="category-pill">{getConversationCategory(conversation.duration)}</span>
                       <p>
                         Duration: {formatDuration(conversation.duration)}
                         <br />
-                        Start: {formatTimestamp(conversation.start)}
+                        Started at: {formatTimestamp(conversation.start)}
                       </p>
                     </div>
-                    <a className="secondary-action" href={`/api/download/${encodeURIComponent(conversation.filename)}`}>
-                      Download
-                    </a>
+                    <div className="card-actions">
+                      <a
+                        className="secondary-action"
+                        href={`/api/download/${encodeURIComponent(conversation.filename)}?preview=1`}
+                      >
+                        Preview
+                      </a>
+                      <a className="secondary-action" href={`/api/download/${encodeURIComponent(conversation.filename)}`}>
+                        Download Clip
+                      </a>
+                    </div>
                   </div>
                 </article>
               ))}
@@ -411,10 +487,10 @@ export default function Home() {
           <div className="feedback-panel">
             <div>
               <span className="panel-label">Beta feedback</span>
-              <strong>How useful was this output?</strong>
+              <strong>Was this output useful?</strong>
             </div>
             <div className="feedback-actions">
-              {["Very Useful", "Somewhat Useful", "Not Useful"].map((value) => (
+              {["👍 Very Useful", "😐 Somewhat Useful", "👎 Not Useful"].map((value) => (
                 <button
                   className={feedback === value ? "feedback-choice is-selected" : "feedback-choice"}
                   key={value}

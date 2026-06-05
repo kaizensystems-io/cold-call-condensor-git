@@ -23,57 +23,79 @@
         <p class="eyebrow">Local-first video condenser</p>
         <h1>Cold Call Condenser</h1>
         <p class="description">
-          Turn long OBS cold call recordings into clean conversation-only videos. Keep the calls, lose the
-          dialing, ringing, and dead air.
+          Turn long call recordings into clean conversation-only videos for cold callers and appointment setters.
+          Keep the calls, lose the dialing, ringing, and dead air.
         </p>
       </section>
 
       <section class="workspace">
         <div class="upload-panel">
+          <div class="preset-row">
+            <label>
+              <span>Preset</span>
+              <select>
+                <option>Cold Calling</option>
+                <option>Appointment Setting</option>
+                <option>Aggressive Condensing</option>
+                <option>Maximum Conversation Preservation</option>
+              </select>
+            </label>
+            <p>Balanced cleanup for cold call sessions with dialing, ringing, and natural talk gaps.</p>
+          </div>
+
           <label class="dropzone" id="dropzone">
             <input type="file" accept=".mp4,.mov,.mkv" id="video-file" />
-            <span class="dropzone-title" id="file-title">Drop your OBS recording here</span>
+            <span class="dropzone-title" id="file-title">Drop your call recording here</span>
             <span class="dropzone-subtitle">or choose an MP4, MOV, or MKV file</span>
           </label>
 
-          <div class="settings-grid">
-            <label>
-              <span>Silence threshold</span>
-              <div class="input-row">
-                <input type="number" value="-40" step="1" />
-                <span>dB</span>
-              </div>
-            </label>
-
-            <label>
-              <span>Minimum silence</span>
-              <div class="input-row">
-                <input type="number" value="5" min="0.1" step="0.1" />
-                <span>sec</span>
-              </div>
-            </label>
-
-            <label>
-              <span>Speech padding</span>
-              <div class="input-row">
-                <input type="number" value="2" min="0" step="0.1" />
-                <span>sec</span>
-              </div>
-            </label>
-
-            <label>
-              <span>Merge nearby speech gaps</span>
-              <div class="input-row">
-                <input type="number" value="8" min="0" step="0.5" />
-                <span>sec</span>
-              </div>
-            </label>
+          <div class="trust-strip">
+            <span>✓ Processed locally</span>
+            <span>✓ No cloud upload</span>
+            <span>✓ Your recordings stay on your device</span>
           </div>
 
-          <p class="settings-help">
-            Higher minimum silence and merge gap values preserve full conversations by removing only meaningful
-            dead air like dialing, ringing, and long pauses.
-          </p>
+          <details class="advanced-settings">
+            <summary>Advanced Settings</summary>
+            <div class="settings-grid">
+              <label>
+                <span>Silence threshold</span>
+                <div class="input-row">
+                  <input type="number" value="-40" step="1" />
+                  <span>dB</span>
+                </div>
+              </label>
+
+              <label>
+                <span>Minimum silence</span>
+                <div class="input-row">
+                  <input type="number" value="5" min="0.1" step="0.1" />
+                  <span>sec</span>
+                </div>
+              </label>
+
+              <label>
+                <span>Speech padding</span>
+                <div class="input-row">
+                  <input type="number" value="2" min="0" step="0.1" />
+                  <span>sec</span>
+                </div>
+              </label>
+
+              <label>
+                <span>Merge nearby speech gaps</span>
+                <div class="input-row">
+                  <input type="number" value="8" min="0" step="0.5" />
+                  <span>sec</span>
+                </div>
+              </label>
+            </div>
+
+            <p class="settings-help">
+              Higher minimum silence and merge gap values preserve full conversations by removing only meaningful
+              dead air like dialing, ringing, and long pauses.
+            </p>
+          </details>
 
           <button class="primary-action" type="button" id="submit-button">Condense Recording</button>
         </div>
@@ -81,8 +103,12 @@
         <aside class="progress-panel" aria-live="polite">
           <div>
             <span class="panel-label">Status</span>
-            <strong id="status">Drop in an OBS recording to get started.</strong>
+            <div class="status-title">
+              <span class="spinner" id="spinner" hidden></span>
+              <strong id="status">Drop in a call recording to get started.</strong>
+            </div>
             <p id="step">Conversation mode is tuned for full call blocks.</p>
+            <p class="conversation-progress" id="conversation-progress" hidden></p>
           </div>
 
           <div class="meter-group">
@@ -137,9 +163,13 @@
               <div class="conversation-card-body">
                 <div>
                   <h3>Conversation #1</h3>
-                  <p>Duration: 2m 14s<br />Start: 03:11</p>
+                  <span class="category-pill">Short Conversation</span>
+                  <p>Duration: 2m 14s<br />Started at: 03:11</p>
                 </div>
-                <a class="secondary-action" href="#" onclick="return false;">Download</a>
+                <div class="card-actions">
+                  <a class="secondary-action" href="#" onclick="return false;">Preview</a>
+                  <a class="secondary-action" href="#" onclick="return false;">Download Clip</a>
+                </div>
               </div>
             </article>
 
@@ -148,9 +178,13 @@
               <div class="conversation-card-body">
                 <div>
                   <h3>Conversation #2</h3>
-                  <p>Duration: 4m 02s<br />Start: 08:54</p>
+                  <span class="category-pill">Medium Conversation</span>
+                  <p>Duration: 4m 02s<br />Started at: 08:54</p>
                 </div>
-                <a class="secondary-action" href="#" onclick="return false;">Download</a>
+                <div class="card-actions">
+                  <a class="secondary-action" href="#" onclick="return false;">Preview</a>
+                  <a class="secondary-action" href="#" onclick="return false;">Download Clip</a>
+                </div>
               </div>
             </article>
 
@@ -159,9 +193,13 @@
               <div class="conversation-card-body">
                 <div>
                   <h3>Conversation #3</h3>
-                  <p>Duration: 6m 28s<br />Start: 31:22</p>
+                  <span class="category-pill">Medium Conversation</span>
+                  <p>Duration: 6m 28s<br />Started at: 31:22</p>
                 </div>
-                <a class="secondary-action" href="#" onclick="return false;">Download</a>
+                <div class="card-actions">
+                  <a class="secondary-action" href="#" onclick="return false;">Preview</a>
+                  <a class="secondary-action" href="#" onclick="return false;">Download Clip</a>
+                </div>
               </div>
             </article>
           </div>
@@ -170,12 +208,12 @@
         <div class="feedback-panel">
           <div>
             <span class="panel-label">Beta feedback</span>
-            <strong>How useful was this output?</strong>
+            <strong>Was this output useful?</strong>
           </div>
           <div class="feedback-actions">
-            <button class="feedback-choice" type="button">Very Useful</button>
-            <button class="feedback-choice" type="button">Somewhat Useful</button>
-            <button class="feedback-choice" type="button">Not Useful</button>
+            <button class="feedback-choice" type="button">👍 Very Useful</button>
+            <button class="feedback-choice" type="button">😐 Somewhat Useful</button>
+            <button class="feedback-choice" type="button">👎 Not Useful</button>
           </div>
         </div>
       </section>
@@ -193,9 +231,11 @@
       const uploadLabel = document.querySelector("#upload-label");
       const processingMeter = document.querySelector("#processing-meter");
       const processingLabel = document.querySelector("#processing-label");
+      const spinner = document.querySelector("#spinner");
+      const conversationProgress = document.querySelector("#conversation-progress");
 
       fileInput.addEventListener("change", () => {
-        fileTitle.textContent = fileInput.files[0] ? fileInput.files[0].name : "Drop your OBS recording here";
+        fileTitle.textContent = fileInput.files[0] ? fileInput.files[0].name : "Drop your call recording here";
         statusText.textContent = "Ready to condense this recording.";
       });
 
@@ -210,6 +250,8 @@
       button.addEventListener("click", async () => {
         button.disabled = true;
         button.textContent = "Condensing...";
+        spinner.hidden = false;
+        conversationProgress.hidden = true;
         results.hidden = true;
         emptyState.hidden = false;
 
@@ -223,8 +265,9 @@
 
         const steps = [
           ["Analyzing audio...", 18],
-          ["Detecting silence...", 40],
-          ["Building conversation blocks...", 66],
+          ["Detecting speech...", 40],
+          ["Merging conversation blocks...", 58],
+          ["Building conversation clips...", 76],
           ["Rendering final video...", 88],
           ["Complete.", 100]
         ];
@@ -232,11 +275,22 @@
         for (const [label, value] of steps) {
           statusText.textContent = value === 100 ? "Complete. Your conversation-only video is ready." : "Processing your recording...";
           stepText.textContent = label;
+          if (label === "Building conversation clips...") {
+            for (let i = 3; i <= 5; i += 1) {
+              conversationProgress.hidden = false;
+              conversationProgress.textContent = `Conversation ${i} of 11`;
+              await new Promise((resolve) => setTimeout(resolve, 420));
+            }
+          } else {
+            conversationProgress.hidden = true;
+          }
           processingMeter.style.width = `${value}%`;
           processingLabel.textContent = `${value}%`;
           await new Promise((resolve) => setTimeout(resolve, 520));
         }
 
+        spinner.hidden = true;
+        conversationProgress.hidden = true;
         emptyState.hidden = true;
         results.hidden = false;
         button.disabled = false;

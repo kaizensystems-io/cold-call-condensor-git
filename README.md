@@ -1,6 +1,6 @@
 # Cold Call Condenser
 
-Cold Call Condenser is a local-first MVP for trimming long OBS cold calling recordings down to the parts that contain audio or speech.
+Cold Call Condenser is a local-first MVP for trimming long call recordings down to the parts that contain real conversations.
 
 Upload an `.mp4`, `.mov`, or `.mkv` file, choose silence settings, and the app exports a condensed MP4 from the detected conversation blocks.
 
@@ -51,14 +51,15 @@ http://localhost:3000
 
 ## How To Use
 
-1. Choose an OBS recording in `.mp4`, `.mov`, or `.mkv` format.
-2. Keep the default settings for a first test:
+1. Choose a call recording in `.mp4`, `.mov`, or `.mkv` format.
+2. Pick a preset. `Cold Calling` is the default.
+3. Keep Advanced Settings closed unless you need manual tuning:
    - Silence threshold: `-40dB`
    - Minimum silence duration: `5 seconds`
    - Padding before/after speech: `2 seconds`
    - Merge nearby speech gaps: `8 seconds`
-3. Click **Upload and Condense**.
-4. Download the processed MP4 when the result appears.
+4. Click **Condense Recording**.
+5. Download the processed MP4 when the result appears.
 
 For cold-call recordings, higher minimum silence and merge gap values preserve full conversation blocks instead
 of splitting normal back-and-forth into sentence-level clips. The defaults are tuned to remove meaningful dead
@@ -130,3 +131,9 @@ Beta feedback is stored in browser `localStorage` under `cold-call-condenser-fee
 - If processing keeps too much dead air, raise the silence threshold, for example from `-40dB` to `-35dB`.
 - If normal conversations are split into too many clips, increase minimum silence or merge nearby speech gaps.
 - If unrelated calls are being joined together, lower merge nearby speech gaps.
+
+## Future Feature Structure
+
+- Presets live in `src/lib/presets.ts`.
+- Future feature placeholders live in `src/lib/roadmap.ts`.
+- Planned future features include AI voicemail detection, AI conversation detection, AI objection tagging, call search, and transcription.
