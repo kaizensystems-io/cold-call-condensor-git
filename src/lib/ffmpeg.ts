@@ -11,6 +11,10 @@ export type Segment = {
   duration: number;
 };
 
+export type Conversation = Segment & {
+  filename: string;
+};
+
 type SilenceRange = {
   start: number;
   end: number;
@@ -27,10 +31,12 @@ export type CondenseResult = {
   originalDuration: number;
   condensedDuration: number;
   removedDuration: number;
+  reductionPercentage: number;
   segmentCount: number;
+  conversationCount: number;
   outputFilename: string;
   outputPath: string;
-  segments: Segment[];
+  conversations: Conversation[];
   warning?: string;
 };
 
@@ -295,23 +301,29 @@ export async function condenseVideo(inputPath: string, options: CondenseOptions)
       : buildTalkingSegments(silences, originalDuration, options.padding, options.mergeNearbyGap);
 
   if (segments.length === 0) {
-    throw new Error("No talking segments were found. Try lowering the silence threshold or reducing the minimum silence duration.");
+    throw new Error("No conversation blocks were found. Try lowering the silence threshold or reducing the minimum silence duration.");
   }
 
   const jobId = randomUUID();
   const workDir = path.join(tmpDir, jobId);
   await fs.mkdir(workDir, { recursive: true });
 
-  const outputFilename = `${jobId}-condensed.mp4`;
+  const outputFilename = `${jobId}-full-condensed.mp4`;
   const outputPath = path.join(outputsDir, outputFilename);
 
   try {
     const segmentPaths: string[] = [];
+    const conversations: Conversation[] = [];
 
     for (const segment of segments) {
-      const segmentPath = path.join(workDir, `segment-${String(segment.index).padStart(4, "0")}.mp4`);
+      const conversationFilename = `${jobId}-conversation-${String(segment.index).padStart(3, "0")}.mp4`;
+      const segmentPath = path.join(outputsDir, conversationFilename);
       await cutSegment(inputPath, segmentPath, segment);
       segmentPaths.push(segmentPath);
+      conversations.push({
+        ...segment,
+        filename: conversationFilename
+      });
     }
 
     await concatenateSegments(segmentPaths, outputPath, workDir);
@@ -323,10 +335,12 @@ export async function condenseVideo(inputPath: string, options: CondenseOptions)
       originalDuration: Number(originalDuration.toFixed(3)),
       condensedDuration: Number(condensedDuration.toFixed(3)),
       removedDuration: Number(Math.max(0, originalDuration - condensedDuration).toFixed(3)),
+      reductionPercentage: Number((((originalDuration - condensedDuration) / originalDuration) * 100).toFixed(1)),
       segmentCount: segments.length,
+      conversationCount: conversations.length,
       outputFilename,
       outputPath,
-      segments,
+      conversations,
       warning
     };
   } finally {

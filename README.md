@@ -2,7 +2,10 @@
 
 Cold Call Condenser is a local-first MVP for trimming long OBS cold calling recordings down to the parts that contain audio or speech.
 
-Upload an `.mp4`, `.mov`, or `.mkv` file, choose silence settings, and the app exports a condensed MP4 from the detected talking segments.
+Upload an `.mp4`, `.mov`, or `.mkv` file, choose silence settings, and the app exports a condensed MP4 from the detected conversation blocks.
+
+The current default mode is tuned for cold-call review: it preserves conversation blocks and removes only
+meaningful dead air like dialing, ringing, long pauses, and time between calls.
 
 ## Requirements
 
@@ -61,6 +64,17 @@ For cold-call recordings, higher minimum silence and merge gap values preserve f
 of splitting normal back-and-forth into sentence-level clips. The defaults are tuned to remove meaningful dead
 air like dialing, ringing, and long pauses.
 
+After processing, the app shows:
+
+- Original duration
+- Condensed duration
+- Time removed
+- Conversations found
+- Percentage reduction
+- Preview cards for each conversation
+- Download links for the full condensed video and each individual conversation clip
+- A local beta feedback prompt
+
 ## How To Test
 
 Start with a short 1-3 minute sample before trying a full cold calling session.
@@ -102,9 +116,11 @@ The app uses local folders only:
 
 - `storage/uploads` for temporary uploaded recordings
 - `storage/tmp` for temporary segment files
-- `storage/outputs` for processed MP4 downloads
+- `storage/outputs` for processed MP4 downloads and individual conversation clips
 
 These folders are created automatically. Uploaded source files are removed after processing. Processed outputs remain available for download until you delete them.
+
+Beta feedback is stored in browser `localStorage` under `cold-call-condenser-feedback`.
 
 ## Notes
 
