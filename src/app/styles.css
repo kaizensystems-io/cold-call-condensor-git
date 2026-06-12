@@ -261,6 +261,16 @@ h3 {
   outline: none;
 }
 
+.settings-grid select {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #ffffff;
+  color: var(--ink);
+  font-weight: 800;
+}
+
 .input-row span {
   color: var(--muted);
   font-weight: 800;
@@ -275,6 +285,7 @@ h3 {
 .primary-action,
 .download-button,
 .secondary-action,
+.icon-action,
 .feedback-choice {
   display: inline-flex;
   min-height: 44px;
@@ -306,6 +317,7 @@ h3 {
 }
 
 .secondary-action,
+.icon-action,
 .feedback-choice {
   border: 1px solid var(--line);
   background: #ffffff;
@@ -313,11 +325,38 @@ h3 {
 }
 
 .secondary-action:hover,
+.icon-action:hover,
 .feedback-choice:hover,
 .feedback-choice.is-selected {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent-dark);
+}
+
+.icon-action {
+  width: 44px;
+  padding: 0;
+}
+
+.icon-action svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.danger-action:hover {
+  border-color: #f2b8b5;
+  background: #fff1f0;
+  color: var(--danger);
+}
+
+.danger-action:disabled {
+  cursor: wait;
+  opacity: 0.55;
 }
 
 .meter-group {
@@ -433,7 +472,7 @@ h3 {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
 }
 

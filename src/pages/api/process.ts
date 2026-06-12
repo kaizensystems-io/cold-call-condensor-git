@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { condenseVideo } from "@/lib/ffmpeg";
+import type { DetectionMethod } from "@/lib/ffmpeg";
 import { ensureStorageFolders, uploadsDir } from "@/lib/storage";
 
 export const config = {
@@ -30,6 +31,10 @@ function firstValue(value: string | string[] | undefined) {
 function readNumber(value: string | string[] | undefined, fallback: number) {
   const parsed = Number.parseFloat(firstValue(value) ?? "");
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function readDetectionMethod(value: string | string[] | undefined): DetectionMethod {
+  return firstValue(value) === "basic" ? "basic" : "voice";
 }
 
 function parseFriendlyError(error: unknown) {
@@ -113,6 +118,7 @@ export default async function handler(
 
     uploadedPath = file.filepath;
 
+    const detectionMethod = readDetectionMethod(fields.detectionMethod);
     const silenceThreshold = readNumber(fields.silenceThreshold, -40);
     const minimumSilenceDuration = readNumber(fields.minimumSilenceDuration, 5);
     const padding = readNumber(fields.padding, 2);
@@ -123,6 +129,7 @@ export default async function handler(
     }
 
     const { outputPath: _outputPath, ...result } = await condenseVideo(uploadedPath, {
+      detectionMethod,
       silenceThresholdDb: silenceThreshold,
       minimumSilenceDuration,
       padding,

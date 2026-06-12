@@ -18,6 +18,22 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
+  if (req.method === "DELETE") {
+    try {
+      fs.rmSync(outputPath, { force: true });
+      res.status(200).json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Could not delete this clip. Please try again." });
+    }
+    return;
+  }
+
+  if (req.method !== "GET") {
+    res.setHeader("Allow", "GET, DELETE");
+    res.status(405).json({ error: "Use GET to download or DELETE to remove a clip." });
+    return;
+  }
+
   const stat = fs.statSync(outputPath);
   if (stat.size === 0) {
     res.status(500).json({ error: "The processed video is empty. Please process the recording again." });

@@ -19,12 +19,13 @@ type ProcessResult = {
   outputFilename: string;
   clips: Clip[];
   warning?: string;
+  detectionMethodUsed: "voice" | "basic";
 };
 
 const allowedTypes = ".mp4,.mov,.mkv";
 const processingSteps = [
   "Analyzing audio...",
-  "Detecting speech...",
+  "Detecting voice activity...",
   "Merging audio clips...",
   "Rendering final video..."
 ];
@@ -65,8 +66,30 @@ function isValidVideo(file: File) {
   return /\.(mp4|mov|mkv)$/i.test(file.name);
 }
 
+function DownloadIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M12 3v11m0 0 4-4m-4 4-4-4" />
+      <path d="M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M19 6 18 20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  );
+}
+
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
+  const [detectionMethod, setDetectionMethod] = useState<"voice" | "basic">("voice");
   const [silenceThreshold, setSilenceThreshold] = useState("-40");
   const [minimumSilenceDuration, setMinimumSilenceDuration] = useState("5");
   const [padding, setPadding] = useState("2");
@@ -81,6 +104,7 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [deletingClip, setDeletingClip] = useState("");
 
   const downloadUrl = useMemo(() => {
     return result ? `/api/download/${encodeURIComponent(result.outputFilename)}` : "";
@@ -127,6 +151,37 @@ export default function Home() {
     localStorage.setItem("cold-call-condenser-feedback", JSON.stringify([...existing, feedbackItem]));
   }
 
+  async function deleteClip(clip: Clip) {
+    setError("");
+    setDeletingClip(clip.filename);
+
+    try {
+      const response = await fetch(`/api/download/${encodeURIComponent(clip.filename)}`, {
+        method: "DELETE"
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not delete this clip.");
+      }
+
+      setResult((currentResult) => {
+        if (!currentResult) return currentResult;
+        const nextClips = currentResult.clips.filter((currentClip) => currentClip.filename !== clip.filename);
+
+        return {
+          ...currentResult,
+          clipCount: nextClips.length,
+          clips: nextClips
+        };
+      });
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Could not delete this clip.");
+    } finally {
+      setDeletingClip("");
+    }
+  }
+
   function startProcessing() {
     setError("");
     setResult(null);
@@ -139,6 +194,7 @@ export default function Home() {
 
     const formData = new FormData();
     formData.append("video", file);
+    formData.append("detectionMethod", detectionMethod);
     formData.append("silenceThreshold", silenceThreshold);
     formData.append("minimumSilenceDuration", minimumSilenceDuration);
     formData.append("padding", padding);
@@ -265,6 +321,17 @@ export default function Home() {
             <summary>Advanced Settings</summary>
             <div className="settings-grid">
               <label>
+                <span>Detection Method</span>
+                <select
+                  value={detectionMethod}
+                  onChange={(event) => setDetectionMethod(event.target.value === "basic" ? "basic" : "voice")}
+                >
+                  <option value="voice">Voice Detection</option>
+                  <option value="basic">Basic Silence Detection</option>
+                </select>
+              </label>
+
+              <label>
                 <span>Silence threshold</span>
                 <div className="input-row">
                   <input
@@ -321,8 +388,8 @@ export default function Home() {
             </div>
 
             <p className="settings-help">
-              Higher minimum silence and merge gap values preserve larger clips by removing only meaningful
-              dead air like dialing, ringing, and long pauses.
+              Voice Detection uses local Silero VAD to find human speech. Basic Silence Detection is the original
+              FFmpeg fallback and may include typing, ringing, clicks, or background sounds.
             </p>
           </details>
 
@@ -402,6 +469,10 @@ export default function Home() {
               <strong>{result.clipCount}</strong>
             </div>
             <div>
+              <span>Detection Used</span>
+              <strong>{result.detectionMethodUsed === "voice" ? "Voice" : "Basic"}</strong>
+            </div>
+            <div>
               <span>Reduction</span>
               <strong>{result.reductionPercentage}%</strong>
             </div>
@@ -432,14 +503,23 @@ export default function Home() {
                     </div>
                     <div className="card-actions">
                       <a
-                        className="secondary-action"
-                        href={`/api/download/${encodeURIComponent(clip.filename)}?preview=1`}
+                        className="icon-action"
+                        href={`/api/download/${encodeURIComponent(clip.filename)}`}
+                        aria-label={`Download clip ${clip.index}`}
+                        title="Download clip"
                       >
-                        Preview
+                        <DownloadIcon />
                       </a>
-                      <a className="secondary-action" href={`/api/download/${encodeURIComponent(clip.filename)}`}>
-                        Download Clip
-                      </a>
+                      <button
+                        className="icon-action danger-action"
+                        type="button"
+                        aria-label={`Delete clip ${clip.index}`}
+                        title="Delete clip"
+                        disabled={deletingClip === clip.filename}
+                        onClick={() => deleteClip(clip)}
+                      >
+                        <TrashIcon />
+                      </button>
                     </div>
                   </div>
                 </article>

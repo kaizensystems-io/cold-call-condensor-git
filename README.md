@@ -13,6 +13,7 @@ meaningful dead air like dialing, ringing, long pauses, and time between calls.
 - Node.js 20 or newer
 - npm
 - FFmpeg and ffprobe
+- Python 3.8 or newer for Voice Detection mode
 
 ## Install FFmpeg on macOS
 
@@ -28,6 +29,25 @@ Confirm both tools are available:
 ffmpeg -version
 ffprobe -version
 ```
+
+## Install Voice Detection Dependencies
+
+Cold Call Condenser now supports two local detection methods:
+
+- **Voice Detection**: the default. Uses Silero VAD to detect human speech, which helps avoid clips caused by typing, ringing, clicks, and background noise.
+- **Basic Silence Detection**: the original FFmpeg `silencedetect` pipeline. It remains available in Advanced Settings as a fallback.
+
+Silero VAD runs locally and does not require a paid API, cloud upload, transcription, or an LLM. The app calls a small Python helper in `scripts/silero_vad.py`, preferring Silero's ONNX runtime path.
+
+Install the local VAD dependencies:
+
+```bash
+python3 -m pip install -r requirements-vad.txt
+```
+
+Silero's project lists Python 3.8+, `onnxruntime>=1.16.1` for ONNX model usage, and notes that ONNX can run faster on CPU. Source: [Silero VAD](https://github.com/snakers4/silero-vad).
+
+If Voice Detection fails or is not installed, the app automatically falls back to Basic Silence Detection and shows a warning.
 
 ## Setup
 
@@ -53,6 +73,7 @@ http://localhost:3000
 
 1. Choose a call recording in `.mp4`, `.mov`, or `.mkv` format.
 2. Keep Advanced Settings closed unless you need manual tuning:
+   - Detection method: `Voice Detection`
    - Silence threshold: `-40dB`
    - Minimum silence duration: `5 seconds`
    - Padding before/after speech: `2 seconds`
@@ -73,6 +94,7 @@ After processing, the app shows:
 - Percentage reduction
 - Preview cards for each clip
 - Download links for the full condensed video and each individual clip
+- Delete controls for removing individual clips after review
 - A local beta feedback prompt
 
 ## How To Test
@@ -125,7 +147,8 @@ Beta feedback is stored in browser `localStorage` under `cold-call-condenser-fee
 ## Notes
 
 - There is no login, database, payment system, transcription, or cloud deployment.
-- Large files can take a while because each talking segment is re-encoded for reliable MP4 concatenation.
+- There are no paid APIs. Voice Detection runs locally with Silero VAD.
+- Large files can take a while because each clip is re-encoded for reliable MP4 concatenation.
 - If processing removes too much speech, lower the silence threshold, for example from `-40dB` to `-45dB`.
 - If processing keeps too much dead air, raise the silence threshold, for example from `-40dB` to `-35dB`.
 - If useful audio is split into too many clips, increase minimum silence or merge nearby speech gaps.

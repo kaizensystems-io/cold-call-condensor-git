@@ -20,7 +20,15 @@ type SilenceRange = {
   end: number;
 };
 
+type SpeechRange = {
+  start: number;
+  end: number;
+};
+
+export type DetectionMethod = "voice" | "basic";
+
 export type CondenseOptions = {
+  detectionMethod: DetectionMethod;
   silenceThresholdDb: number;
   minimumSilenceDuration: number;
   padding: number;
@@ -37,6 +45,7 @@ export type CondenseResult = {
   outputPath: string;
   clips: Clip[];
   warning?: string;
+  detectionMethodUsed: DetectionMethod;
 };
 
 const minimumIsolatedSpeechSeconds = 2;
@@ -114,6 +123,55 @@ async function detectSilences(inputPath: string, originalDuration: number, optio
   }
 
   return parseSilenceRanges(stderr, originalDuration);
+}
+
+async function extractVadWav(inputPath: string, outputPath: string) {
+  await runCommand("ffmpeg", [
+    "-hide_banner",
+    "-y",
+    "-i",
+    inputPath,
+    "-vn",
+    "-ac",
+    "1",
+    "-ar",
+    "16000",
+    "-f",
+    "wav",
+    outputPath
+  ]);
+}
+
+async function detectSpeechWithSilero(inputPath: string, workDir: string) {
+  const wavPath = path.join(workDir, "vad-input.wav");
+  await extractVadWav(inputPath, wavPath);
+
+  const pythonCommand = process.env.COLD_CALL_CONDENSER_PYTHON || "python3";
+  const scriptPath = path.join(process.cwd(), "scripts", "silero_vad.py");
+  const { stdout, stderr } = await runCommand(pythonCommand, [scriptPath, wavPath]);
+  const rawOutput =
+    stdout
+      .trim()
+      .split(/\r?\n/)
+      .reverse()
+      .find((line) => line.trim().startsWith("{")) ?? "";
+
+  if (!rawOutput) {
+    throw new Error(stderr.trim() || "Silero VAD did not return speech timestamps.");
+  }
+
+  let parsed: { speech?: SpeechRange[]; error?: string };
+  try {
+    parsed = JSON.parse(rawOutput);
+  } catch {
+    throw new Error("Silero VAD returned an unreadable response.");
+  }
+
+  if (parsed.error) {
+    throw new Error(parsed.error);
+  }
+
+  return (parsed.speech ?? []).filter((range) => range.end > range.start);
 }
 
 export function parseSilenceRanges(output: string, originalDuration?: number) {
@@ -219,6 +277,61 @@ export function buildTalkingSegments(
     }));
 }
 
+export function buildClipsFromSpeechRanges(
+  speechRanges: SpeechRange[],
+  originalDuration: number,
+  padding: number,
+  mergeNearbyGap: number
+): Segment[] {
+  type InternalSegment = {
+    start: number;
+    end: number;
+    coreStart: number;
+    coreEnd: number;
+    speechDuration: number;
+  };
+
+  const rawSegments = speechRanges
+    .filter((range) => range.end > range.start)
+    .sort((a, b) => a.start - b.start)
+    .map<InternalSegment>((range) => {
+      const coreStart = Math.max(0, Math.min(originalDuration, range.start));
+      const coreEnd = Math.max(coreStart, Math.min(originalDuration, range.end));
+
+      return {
+        start: Math.max(0, coreStart - padding),
+        end: Math.min(originalDuration, coreEnd + padding),
+        coreStart,
+        coreEnd,
+        speechDuration: coreEnd - coreStart
+      };
+    })
+    .filter((segment) => segment.speechDuration > 0);
+
+  const merged = rawSegments.reduce<InternalSegment[]>((acc, segment) => {
+    const previous = acc.at(-1);
+
+    if (!previous || segment.coreStart - previous.coreEnd >= mergeNearbyGap) {
+      acc.push(segment);
+      return acc;
+    }
+
+    previous.end = Math.max(previous.end, segment.end);
+    previous.coreEnd = Math.max(previous.coreEnd, segment.coreEnd);
+    previous.speechDuration += segment.speechDuration;
+    return acc;
+  }, []);
+
+  return merged
+    .filter((segment) => segment.speechDuration >= minimumIsolatedSpeechSeconds)
+    .map((segment, index) => ({
+      index: index + 1,
+      start: Number(segment.start.toFixed(3)),
+      end: Number(segment.end.toFixed(3)),
+      duration: Number((segment.end - segment.start).toFixed(3))
+    }));
+}
+
 async function cutSegment(inputPath: string, outputPath: string, segment: Segment) {
   await runCommand("ffmpeg", [
     "-hide_banner",
@@ -280,28 +393,8 @@ export async function condenseVideo(inputPath: string, options: CondenseOptions)
   await ensureStorageFolders();
 
   const originalDuration = await getVideoDuration(inputPath);
-  const silences = await detectSilences(inputPath, originalDuration, options);
   let warning: string | undefined;
-
-  if (silences.length === 0) {
-    warning = "No silence was detected, so the output keeps the full recording.";
-  }
-
-  const segments =
-    silences.length === 0
-      ? [
-          {
-            index: 1,
-            start: 0,
-            end: Number(originalDuration.toFixed(3)),
-            duration: Number(originalDuration.toFixed(3))
-          }
-        ]
-      : buildTalkingSegments(silences, originalDuration, options.padding, options.mergeNearbyGap);
-
-  if (segments.length === 0) {
-    throw new Error("No audio clips were found. Try lowering the silence threshold or reducing the minimum silence duration.");
-  }
+  let detectionMethodUsed: DetectionMethod = options.detectionMethod;
 
   const jobId = randomUUID();
   const workDir = path.join(tmpDir, jobId);
@@ -311,6 +404,53 @@ export async function condenseVideo(inputPath: string, options: CondenseOptions)
   const outputPath = path.join(outputsDir, outputFilename);
 
   try {
+    let segments: Segment[] = [];
+
+    if (options.detectionMethod === "voice") {
+      try {
+        const speechRanges = await detectSpeechWithSilero(inputPath, workDir);
+        segments = buildClipsFromSpeechRanges(speechRanges, originalDuration, options.padding, options.mergeNearbyGap);
+
+        if (speechRanges.length === 0) {
+          throw new Error("Silero VAD did not detect any human speech.");
+        }
+
+        if (segments.length === 0) {
+          throw new Error("Silero VAD only detected tiny isolated speech fragments.");
+        }
+      } catch (error) {
+        detectionMethodUsed = "basic";
+        const message = error instanceof Error ? error.message : "Silero VAD failed.";
+        warning = `Voice Detection was unavailable, so Basic Silence Detection was used instead. ${message}`;
+      }
+    }
+
+    if (detectionMethodUsed === "basic") {
+      const silences = await detectSilences(inputPath, originalDuration, options);
+
+      if (silences.length === 0) {
+        warning = warning
+          ? `${warning} No silence was detected, so the output keeps the full recording.`
+          : "No silence was detected, so the output keeps the full recording.";
+      }
+
+      segments =
+        silences.length === 0
+          ? [
+              {
+                index: 1,
+                start: 0,
+                end: Number(originalDuration.toFixed(3)),
+                duration: Number(originalDuration.toFixed(3))
+              }
+            ]
+          : buildTalkingSegments(silences, originalDuration, options.padding, options.mergeNearbyGap);
+    }
+
+    if (segments.length === 0) {
+      throw new Error("No audio clips were found. Try Basic Silence Detection or adjust Advanced Settings.");
+    }
+
     const segmentPaths: string[] = [];
     const clips: Clip[] = [];
 
@@ -339,7 +479,8 @@ export async function condenseVideo(inputPath: string, options: CondenseOptions)
       outputFilename,
       outputPath,
       clips,
-      warning
+      warning,
+      detectionMethodUsed
     };
   } finally {
     await fs.rm(workDir, { recursive: true, force: true });

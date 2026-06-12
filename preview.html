@@ -46,6 +46,14 @@
             <summary>Advanced Settings</summary>
             <div class="settings-grid">
               <label>
+                <span>Detection Method</span>
+                <select>
+                  <option>Voice Detection</option>
+                  <option>Basic Silence Detection</option>
+                </select>
+              </label>
+
+              <label>
                 <span>Silence threshold</span>
                 <div class="input-row">
                   <input type="number" value="-40" step="1" />
@@ -79,8 +87,8 @@
             </div>
 
             <p class="settings-help">
-              Higher minimum silence and merge gap values preserve larger clips by removing only meaningful
-              dead air like dialing, ringing, and long pauses.
+              Voice Detection uses local Silero VAD to find human speech. Basic Silence Detection is the original
+              FFmpeg fallback and may include typing, ringing, clicks, or background sounds.
             </p>
           </details>
 
@@ -135,6 +143,7 @@
           <div><span>Condensed Duration</span><strong>47m 0s</strong></div>
           <div><span>Time Removed</span><strong>2h 25m</strong></div>
           <div><span>Clips Found</span><strong>31</strong></div>
+          <div><span>Detection Used</span><strong>Voice</strong></div>
           <div><span>Reduction</span><strong>76%</strong></div>
         </div>
 
@@ -153,8 +162,12 @@
                   <p>Duration: 2m 14s<br />Started at: 03:11</p>
                 </div>
                 <div class="card-actions">
-                  <a class="secondary-action" href="#" onclick="return false;">Preview</a>
-                  <a class="secondary-action" href="#" onclick="return false;">Download Clip</a>
+                  <a class="icon-action" href="#" onclick="return false;" aria-label="Download clip 1" title="Download clip">
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4" /><path d="M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" /></svg>
+                  </a>
+                  <button class="icon-action danger-action demo-delete" type="button" aria-label="Delete clip 1" title="Delete clip">
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6 18 20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /></svg>
+                  </button>
                 </div>
               </div>
             </article>
@@ -167,8 +180,12 @@
                   <p>Duration: 4m 02s<br />Started at: 08:54</p>
                 </div>
                 <div class="card-actions">
-                  <a class="secondary-action" href="#" onclick="return false;">Preview</a>
-                  <a class="secondary-action" href="#" onclick="return false;">Download Clip</a>
+                  <a class="icon-action" href="#" onclick="return false;" aria-label="Download clip 2" title="Download clip">
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4" /><path d="M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" /></svg>
+                  </a>
+                  <button class="icon-action danger-action demo-delete" type="button" aria-label="Delete clip 2" title="Delete clip">
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6 18 20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /></svg>
+                  </button>
                 </div>
               </div>
             </article>
@@ -181,8 +198,12 @@
                   <p>Duration: 6m 28s<br />Started at: 31:22</p>
                 </div>
                 <div class="card-actions">
-                  <a class="secondary-action" href="#" onclick="return false;">Preview</a>
-                  <a class="secondary-action" href="#" onclick="return false;">Download Clip</a>
+                  <a class="icon-action" href="#" onclick="return false;" aria-label="Download clip 3" title="Download clip">
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4" /><path d="M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" /></svg>
+                  </a>
+                  <button class="icon-action danger-action demo-delete" type="button" aria-label="Delete clip 3" title="Delete clip">
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6 18 20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /></svg>
+                  </button>
                 </div>
               </div>
             </article>
@@ -231,6 +252,12 @@
         });
       });
 
+      document.querySelectorAll(".demo-delete").forEach((button) => {
+        button.addEventListener("click", () => {
+          button.closest(".clip-card").remove();
+        });
+      });
+
       button.addEventListener("click", async () => {
         button.disabled = true;
         button.textContent = "Condensing...";
@@ -249,7 +276,7 @@
 
         const steps = [
           ["Analyzing audio...", 18],
-          ["Detecting speech...", 40],
+          ["Detecting voice activity...", 40],
           ["Merging audio clips...", 58],
           ["Rendering final video...", 88],
           ["Complete.", 100]
