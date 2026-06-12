@@ -49,6 +49,30 @@ Silero's project lists Python 3.8+, `onnxruntime>=1.16.1` for ONNX model usage, 
 
 If Voice Detection fails or is not installed, the app automatically falls back to Basic Silence Detection and shows a warning.
 
+You can check the exact Python environment the app sees:
+
+```text
+http://localhost:3000/api/vad-diagnostics
+```
+
+That endpoint runs the equivalent of:
+
+```bash
+python3 -c "import silero_vad; print('ok')"
+```
+
+It also returns the exact Python executable path. If the import fails, install Silero into that same Python:
+
+```bash
+<python-path> -m pip install silero-vad onnxruntime soundfile
+```
+
+For example:
+
+```bash
+/opt/homebrew/bin/python3 -m pip install silero-vad onnxruntime soundfile
+```
+
 ## Setup
 
 Install dependencies:
@@ -158,3 +182,21 @@ Beta feedback is stored in browser `localStorage` under `cold-call-condenser-fee
 
 - Future feature placeholders live in `src/lib/roadmap.ts`.
 - Planned future features include AI voicemail detection, AI clip detection, AI objection tagging, call search, and transcription.
+
+## Troubleshooting Python Environments
+
+macOS often has multiple Python installs, such as Apple Python, Homebrew Python, `pyenv`, or a virtual environment. Installing Silero into one Python does not make it available to another.
+
+If Voice Detection says Silero is not installed:
+
+1. Open `http://localhost:3000/api/vad-diagnostics`.
+2. Copy the returned `pythonPath`.
+3. Run:
+
+```bash
+<pythonPath> -m pip install silero-vad onnxruntime soundfile
+```
+
+4. Reopen the diagnostic endpoint. It should return `ok`.
+
+The app logs the Python executable used for Silero VAD in the terminal running `npm run dev`.

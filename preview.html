@@ -103,7 +103,6 @@
               <strong id="status">Drop in a call recording to get started.</strong>
             </div>
             <p id="step">Clip mode is tuned for cold calling sessions.</p>
-            <p class="rendering-hint" id="rendering-hint" hidden></p>
           </div>
 
           <div class="meter-group">
@@ -237,8 +236,6 @@
       const processingMeter = document.querySelector("#processing-meter");
       const processingLabel = document.querySelector("#processing-label");
       const spinner = document.querySelector("#spinner");
-      const renderingHint = document.querySelector("#rendering-hint");
-
       fileInput.addEventListener("change", () => {
         fileTitle.textContent = fileInput.files[0] ? fileInput.files[0].name : "Drop your call recording here";
         statusText.textContent = "Ready to condense this recording.";
@@ -262,7 +259,6 @@
         button.disabled = true;
         button.textContent = "Condensing...";
         spinner.hidden = false;
-        renderingHint.hidden = true;
         results.hidden = true;
         emptyState.hidden = false;
 
@@ -274,38 +270,17 @@
           await new Promise((resolve) => setTimeout(resolve, 260));
         }
 
-        const steps = [
-          ["Analyzing audio...", 18],
-          ["Detecting voice activity...", 40],
-          ["Merging audio clips...", 58],
-          ["Rendering final video...", 88],
-          ["Complete.", 100]
-        ];
+        statusText.textContent = "Processing your recording...";
+        stepText.textContent = "Building clips and rendering video.";
 
-        for (const [label, value] of steps) {
-          statusText.textContent = value === 100 ? "Complete. Your clip-only video is ready." : "Processing your recording...";
-          stepText.textContent = label;
-          if (label === "Rendering final video...") {
-            const renderMessages = [
-              "Still working — large files can take a few minutes.",
-              "Do not close this tab.",
-              "Rendering final video..."
-            ];
-            for (const message of renderMessages) {
-              renderingHint.hidden = false;
-              renderingHint.textContent = message;
-              await new Promise((resolve) => setTimeout(resolve, 420));
-            }
-          } else {
-            renderingHint.hidden = true;
-          }
+        for (const value of [18, 40, 58, 76, 88, 100]) {
           processingMeter.style.width = `${value}%`;
           processingLabel.textContent = `${value}%`;
           await new Promise((resolve) => setTimeout(resolve, 520));
         }
 
+        statusText.textContent = "Complete. Your clip-only video is ready.";
         spinner.hidden = true;
-        renderingHint.hidden = true;
         emptyState.hidden = true;
         results.hidden = false;
         button.disabled = false;

@@ -403,18 +403,6 @@ h3 {
   animation: spin 850ms linear infinite;
 }
 
-.rendering-hint {
-  display: inline-flex;
-  width: fit-content;
-  min-height: 34px;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0 10px;
-  background: var(--accent-soft);
-  color: var(--accent-dark) !important;
-  font-weight: 850;
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);

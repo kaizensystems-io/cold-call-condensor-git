@@ -23,13 +23,6 @@ type ProcessResult = {
 };
 
 const allowedTypes = ".mp4,.mov,.mkv";
-const processingSteps = [
-  "Analyzing audio...",
-  "Detecting voice activity...",
-  "Merging audio clips...",
-  "Rendering final video..."
-];
-
 function formatDuration(seconds: number) {
   if (!Number.isFinite(seconds)) return "0m";
   const totalSeconds = Math.max(0, Math.round(seconds));
@@ -95,8 +88,6 @@ export default function Home() {
   const [padding, setPadding] = useState("2");
   const [mergeNearbyGap, setMergeNearbyGap] = useState("8");
   const [status, setStatus] = useState("Drop in a call recording to get started.");
-  const [processingStep, setProcessingStep] = useState("");
-  const [renderingHint, setRenderingHint] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [error, setError] = useState("");
@@ -203,18 +194,9 @@ export default function Home() {
     setIsProcessing(true);
     setUploadProgress(0);
     setProcessingProgress(0);
-    setProcessingStep("Preparing upload...");
-    setRenderingHint("");
     setStatus("Uploading your recording...");
 
-    let stepIndex = 0;
-    let renderHintIndex = 0;
     let stepTimer: ReturnType<typeof window.setInterval> | undefined;
-    const renderHints = [
-      "Still working — large files can take a few minutes.",
-      "Do not close this tab.",
-      "Rendering final video..."
-    ];
 
     const xhr = new XMLHttpRequest();
 
@@ -225,19 +207,9 @@ export default function Home() {
 
       if (progress >= 100 && !stepTimer) {
         setStatus("Processing your recording...");
-        setProcessingStep(processingSteps[0]);
         setProcessingProgress(18);
         stepTimer = window.setInterval(() => {
-          stepIndex = Math.min(stepIndex + 1, processingSteps.length - 1);
-          setProcessingStep(processingSteps[stepIndex]);
-          setProcessingProgress((currentProgress) => Math.min(94, Math.max(currentProgress + 6, 18 + stepIndex * 18)));
-
-          if (processingSteps[stepIndex] === "Rendering final video...") {
-            setRenderingHint(renderHints[renderHintIndex % renderHints.length]);
-            renderHintIndex += 1;
-          } else {
-            setRenderingHint("");
-          }
+          setProcessingProgress((currentProgress) => Math.min(94, currentProgress + 4));
         }, 2200);
       }
     };
@@ -253,14 +225,10 @@ export default function Home() {
         }
 
         setResult(data);
-        setProcessingStep("Complete.");
-        setRenderingHint("");
         setProcessingProgress(100);
         setStatus("Complete. Your clip-only video is ready.");
       } catch (caughtError) {
         setError(caughtError instanceof Error ? caughtError.message : "Something went wrong.");
-        setProcessingStep("");
-        setRenderingHint("");
         setStatus("Processing stopped.");
       } finally {
         setIsProcessing(false);
@@ -270,8 +238,6 @@ export default function Home() {
     xhr.onerror = () => {
       if (stepTimer) window.clearInterval(stepTimer);
       setError("Upload failed. Please try again.");
-      setProcessingStep("");
-      setRenderingHint("");
       setStatus("Processing stopped.");
       setIsProcessing(false);
     };
@@ -405,8 +371,7 @@ export default function Home() {
               {isProcessing ? <span className="spinner" aria-hidden="true" /> : null}
               <strong>{status}</strong>
             </div>
-            {processingStep ? <p>{processingStep}</p> : <p>Clip mode is tuned for cold calling sessions.</p>}
-            {renderingHint ? <p className="rendering-hint">{renderingHint}</p> : null}
+            <p>{isProcessing ? "Building clips and rendering video." : "Clip mode is tuned for cold calling sessions."}</p>
           </div>
 
           <div className="meter-group">

@@ -84,6 +84,47 @@ function runCommand(command: string, args: string[]) {
   });
 }
 
+function cleanCommandError(error: unknown) {
+  return error instanceof Error ? error.message : "Unknown command error.";
+}
+
+function vadInstallCommand(pythonPath: string) {
+  return `${pythonPath} -m pip install silero-vad onnxruntime soundfile`;
+}
+
+export async function resolvePythonExecutable() {
+  const { stdout } = await runCommand("python3", ["-c", "import sys; print(sys.executable)"]);
+  const pythonPath = stdout.trim();
+
+  if (!pythonPath) {
+    throw new Error("python3 did not report a Python executable path.");
+  }
+
+  return pythonPath;
+}
+
+export async function checkSileroVadEnvironment() {
+  const pythonPath = await resolvePythonExecutable();
+  console.info(`[Cold Call Condenser] Python executable for Silero VAD: ${pythonPath}`);
+
+  try {
+    const { stdout } = await runCommand("python3", ["-c", "import silero_vad; print('ok')"]);
+    return {
+      ok: true as const,
+      pythonPath,
+      installCommand: vadInstallCommand(pythonPath),
+      output: stdout.trim()
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      pythonPath,
+      installCommand: vadInstallCommand(pythonPath),
+      error: cleanCommandError(error)
+    };
+  }
+}
+
 export async function getVideoDuration(inputPath: string) {
   const { stdout } = await runCommand("ffprobe", [
     "-v",
@@ -146,8 +187,17 @@ async function detectSpeechWithSilero(inputPath: string, workDir: string) {
   const wavPath = path.join(workDir, "vad-input.wav");
   await extractVadWav(inputPath, wavPath);
 
-  const pythonCommand = process.env.COLD_CALL_CONDENSER_PYTHON || "python3";
+  const vadEnvironment = await checkSileroVadEnvironment();
+  if (!vadEnvironment.ok) {
+    throw new Error(
+      `Silero VAD import failed for Python executable: ${vadEnvironment.pythonPath}. ` +
+        `Install it with: ${vadEnvironment.installCommand}. Details: ${vadEnvironment.error}`
+    );
+  }
+
+  const pythonCommand = vadEnvironment.pythonPath;
   const scriptPath = path.join(process.cwd(), "scripts", "silero_vad.py");
+  console.info(`[Cold Call Condenser] Running Silero VAD with Python executable: ${pythonCommand}`);
   const { stdout, stderr } = await runCommand(pythonCommand, [scriptPath, wavPath]);
   const rawOutput =
     stdout
